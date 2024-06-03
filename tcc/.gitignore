@@ -102,3 +102,7 @@ web/build/
 *.rej
 *.swo
 *.swp
+tcc/web
+tcc/Linux
+tcc/macos
+tcc/windows
