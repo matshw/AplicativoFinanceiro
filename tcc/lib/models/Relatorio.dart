@@ -1,4 +1,4 @@
-import 'package:tcc/models/Ganhos.dart';
+import 'package:tcc/models/ganhos.dart';
 import 'package:tcc/models/Gastos.dart';
 import 'package:tcc/models/Investimento.dart';
 

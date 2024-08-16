@@ -1,7 +1,5 @@
-import 'package:tcc/models/categoriaRisco.dart';
 
-class Investimento extends CategoriaRisco {
-  final CategoriaRisco risco;
+class Investimento {
   final double valor;
   final String descricao;
   final double rentabilidade;
@@ -9,14 +7,12 @@ class Investimento extends CategoriaRisco {
   final DateTime dataPrevista;
 
   Investimento({
-    required super.idRisco,
-    required super.nomeRisco,
+
     required this.valor,
     required this.descricao,
     required this.rentabilidade,
     required this.dataInvestimento,
     required this.dataPrevista,
-    required this.risco,
   });
 
   

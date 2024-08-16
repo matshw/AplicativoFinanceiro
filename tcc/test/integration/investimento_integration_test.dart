@@ -3,9 +3,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:tcc/models/categoriaRisco.dart';
 import 'package:tcc/models/investimento.dart';
 import 'package:tcc/firebase_options.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
-  // Inicialize o Firebase antes de executar os testes
   setUpAll(() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -19,7 +19,7 @@ void main() async {
     test('Deve criar um investimento no firebase', () async {
       final investimento = Investimento(
         idRisco: '1',
-        nome: 'Alto Risco',
+        nomeRisco: 'Alto Risco',
         valor: 1000.0,
         descricao: 'Investimento em ações',
         rentabilidade: 5.0,

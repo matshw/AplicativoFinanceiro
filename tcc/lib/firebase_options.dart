@@ -65,4 +65,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'aplicativo-financeiro-dd88f.appspot.com',
     iosBundleId: 'com.example.tcc',
   );
+
 }

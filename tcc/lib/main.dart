@@ -1,27 +1,63 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:tcc/screens/screen_tabs.dart';
 import 'firebase_options.dart';
+import 'utils/app-routes.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const FinanceiroApp());
+
+  await initializeDateFormatting('pt_BR', null);
+
+  runApp(FinanceiroApp());
 }
 
 class FinanceiroApp extends StatefulWidget {
   const FinanceiroApp({super.key});
 
   @override
-  _FinanceiroAppState createState() => _FinanceiroAppState();
+  State<FinanceiroApp> createState() => _FinanceiroAppState();
 }
 
 class _FinanceiroAppState extends State<FinanceiroApp> {
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: HomePage(),
+    return MaterialApp(
+      localizationsDelegates: [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: [Locale('pt', 'BR')],
+      theme: ThemeData(
+        fontFamily: 'Rubik',
+        canvasColor: Color.fromRGBO(255, 254, 229, 1),
+        primarySwatch: Colors.blue,
+        textTheme: ThemeData.light().textTheme.copyWith(
+              titleLarge: TextStyle(
+                fontFamily: 'Rubik',
+                fontSize: 20,
+              ),
+              titleMedium: TextStyle(
+                fontFamily: 'Rubik',
+                fontSize: 18,
+              ),
+            ),
+        colorScheme: ThemeData.light().colorScheme.copyWith(
+              primary: Colors.blue[400],
+              secondary: Colors.blue[200],
+            ),
+      ),
+      initialRoute: AppRoutes.HOME,
+      routes: {
+        AppRoutes.HOME: (ctx) => ScreenTabs(),
+      },
     );
   }
 }
@@ -32,11 +68,8 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Aplicativo Financeiro'),
-      ),
-      body: const Center(
-        child: Text('Página inicial do aplicativo'),
+      body: Center(
+        child: Text("Inicial"),
       ),
     );
   }

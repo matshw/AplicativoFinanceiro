@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tcc/models/ganhos.dart';
-import 'package:tcc/models/categoriaGanho.dart';
 
 void main() {
   group('Ganhos', () {
