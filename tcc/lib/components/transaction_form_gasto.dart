@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -10,57 +11,65 @@ import 'package:intl/intl.dart';
 class TransactionFormGasto extends StatefulWidget {
   final ValueNotifier<Map<String, double>> balanceNotifier;
   final Function onSubmit;
-  const TransactionFormGasto(this.balanceNotifier, this.onSubmit, {super.key});
+  const TransactionFormGasto(this.balanceNotifier, this.onSubmit);
 
   @override
   State<TransactionFormGasto> createState() => _TransactionFormGastoState();
 }
 
 class FirestoreService {
-  final CollectionReference gastos =
-      FirebaseFirestore.instance.collection('gastos');
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> addGasto(
+  Future<void> addTransacao(
+    String uid,
     String descricao,
-    double valor,
     String categoria,
-    DateTime dataPagamento,
+    String tipo,
+    double valor,
+    DateTime data,
     String? imagem,
   ) async {
     try {
-      await gastos.add({
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('transacao')
+          .add({
         'descricao': descricao,
-        'valor': valor,
         'categoria': categoria,
-        'dataPagamento': dataPagamento,
+        'tipo': tipo,
+        'valor': valor,
+        'data': data,
         'imagem': imagem ?? '',
       });
-      print("Gasto adicionado com sucesso.");
     } catch (e) {
-      print("Erro ao adicionar gasto: $e");
+      print("Erro ao adicionar transação: $e");
     }
   }
 
-  final DocumentReference userInfo =
-      FirebaseFirestore.instance.collection('userInfo').doc('user_info');
-
   Future<void> updateInfo(
+    String uid,
     double gastoValue,
     double saldoValue,
   ) async {
     try {
-      await userInfo.set({
-        'gastoValue': gastoValue,
-        'saldoValue': saldoValue,
+      DocumentSnapshot doc =
+          await _firestore.collection('users').doc(uid).get();
+      double currentGastoValue = doc['gastoValue'] ?? 0.0;
+      double currentSaldoValue = doc['saldoValue'] ?? 0.0;
+      await _firestore.collection('users').doc(uid).set({
+        'gastoValue': currentGastoValue + gastoValue,
+        'saldoValue': currentSaldoValue + saldoValue,
       }, SetOptions(merge: true));
     } catch (e) {
-      print("Error updating info: $e");
+      print("Erro ao atualizar informações: $e");
     }
   }
 
-  Future<Map<String, double>> getInfo() async {
+  Future<Map<String, double>> getInfo(String uid) async {
     try {
-      DocumentSnapshot doc = await userInfo.get();
+      DocumentSnapshot doc =
+          await _firestore.collection('users').doc(uid).get();
       if (doc.exists) {
         double gastoValue = doc['gastoValue'] ?? 0.0;
         double saldoValue = doc['saldoValue'] ?? 0.0;
@@ -69,8 +78,86 @@ class FirestoreService {
         return {'gastoValue': 0.0, 'saldoValue': 0.0};
       }
     } catch (e) {
-      print("Error fetching info: $e");
+      print("Erro ao obter informações: $e");
       return {'gastoValue': 0.0, 'saldoValue': 0.0};
+    }
+  }
+
+  Stream<QuerySnapshot> getTransactionsStream(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transacao')
+        .orderBy('data', descending: true)
+        .snapshots();
+  }
+
+  Stream<DocumentSnapshot> getSaldoStream(String uid) {
+    return _firestore.collection('users').doc(uid).snapshots();
+  }
+
+  Future<void> updateTransacao(
+    String uid,
+    String docID,
+    String descricao,
+    double valor,
+    String tipo,
+  ) async {
+    double difference = 0.0;
+
+    DocumentSnapshot docSnapshot = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transacao')
+        .doc(docID)
+        .get();
+    if (docSnapshot.exists) {
+      double oldValor = docSnapshot['valor'] ?? 0.0;
+      difference = valor - oldValor;
+    }
+
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transacao')
+        .doc(docID)
+        .update({
+      'descricao': descricao,
+      'valor': valor,
+    });
+
+    if (tipo == 'ganho') {
+      await _firestore.collection('users').doc(uid).update({
+        'saldoValue': FieldValue.increment(difference),
+        'ganhoValue': FieldValue.increment(difference)
+      });
+    } else if (tipo == 'gasto') {
+      await _firestore.collection('users').doc(uid).update({
+        'saldoValue': FieldValue.increment(-difference),
+        'gastoValue': FieldValue.increment(difference)
+      });
+    }
+  }
+
+  Future<void> removeTransacao(
+      String uid, String docID, double valor, String tipo) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transacao')
+        .doc(docID)
+        .delete();
+
+    if (tipo == 'ganho') {
+      await _firestore.collection('users').doc(uid).update({
+        'saldoValue': FieldValue.increment(-valor),
+        'ganhoValue': FieldValue.increment(-valor)
+      });
+    } else if (tipo == 'gasto') {
+      await _firestore.collection('users').doc(uid).update({
+        'saldoValue': FieldValue.increment(valor),
+        'gastoValue': FieldValue.increment(-valor)
+      });
     }
   }
 }
@@ -78,18 +165,20 @@ class FirestoreService {
 class _TransactionFormGastoState extends State<TransactionFormGasto> {
   double gastoValue = 0;
   double saldoValue = 0;
+  final _descricaoController = TextEditingController();
+  final _valorController = TextEditingController();
   bool imageExists = false;
-  DateTime dataPagamento = DateTime.now();
-
+  var _selectedDate = DateTime.now();
   final FirestoreService _firestoreService = FirestoreService();
   String? _selectedCategory;
   String? _selectedPayment;
   String? imagem;
-  final _descricaoController = TextEditingController();
-  final _valorController = TextEditingController();
 
   Future<void> _loadInfo() async {
-    Map<String, double> info = await _firestoreService.getInfo();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    Map<String, double> info = await _firestoreService.getInfo(user.uid);
     setState(() {
       gastoValue = info['gastoValue']!;
       saldoValue = info['saldoValue']!;
@@ -103,48 +192,34 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
   }
 
   void _submitFormGasto() async {
-    final descricao = _descricaoController.text;
-    final valor = double.tryParse(_valorController.text) ?? 0.0;
-    final categoria = _selectedCategory;
-    final pagamento = _selectedPayment;
-
-    if (descricao.isEmpty) {
-      _showError("Descrição não pode estar vazia.");
-      return;
-    }
-    if (valor <= 0) {
-      _showError("Valor deve ser maior que zero.");
-      return;
-    }
-    if (categoria == null) {
-      _showError("Categoria não selecionada.");
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showError("Erro: usuário não autenticado.");
       return;
     }
 
-    if (pagamento == null) {
-      _showError("Modo de pagamento não selecionado.");
+    final description = _descricaoController.text;
+    final category = _selectedCategory;
+    final value = double.tryParse(_valorController.text) ?? 0.0;
+
+    if (description.isEmpty || value <= 0 || category == null) {
+      _showError("Preencha todos os campos.");
       return;
     }
 
-    gastoValue += valor;
-    saldoValue = saldoValue - valor;
-
+    double newSaldoValue = -value;
+    double newGastoValue = value;
     try {
-      await FirestoreService().addGasto(
-        descricao,
-        valor,
-        categoria,
-        dataPagamento,
-        imagem,
-      );
-      await _firestoreService.updateInfo(gastoValue, saldoValue);
+      await _firestoreService.addTransacao(user.uid, description, category,
+          "gasto", value, _selectedDate, imagem);
+      await _firestoreService.updateInfo(
+          user.uid, newGastoValue, newSaldoValue);
       widget.balanceNotifier.value = {
         'gastoValue': gastoValue,
-        'saldoValue': saldoValue,
+        'saldoValue': saldoValue
       };
       Navigator.of(context).pop();
     } catch (e) {
-      print("Error submitting form: $e");
       _showError("Erro ao adicionar transação.");
     }
   }
@@ -185,38 +260,6 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
     'Tecnologia': const FaIcon(FontAwesomeIcons.laptop),
     'Outros': const FaIcon(FontAwesomeIcons.circleQuestion),
   };
-
-  final Map<String, FaIcon> _payMode = {
-    'Dinheiro': const FaIcon(FontAwesomeIcons.moneyBill),
-    'Cartão de Débito': const FaIcon(FontAwesomeIcons.creditCard),
-    'Cartão de Crédito': const FaIcon(FontAwesomeIcons.ccVisa),
-  };
-
-  void _chipSelectionPayment(String payment) {
-    setState(() {
-      _selectedPayment = payment;
-    });
-  }
-
-  Widget _createChipPayment(String payment, FaIcon icon) {
-    return ChoiceChip(
-      shape: RoundedRectangleBorder(
-          side: const BorderSide(
-            color: Colors.blue,
-          ),
-          borderRadius: BorderRadius.circular(8.0)),
-      selected: _selectedPayment == payment,
-      avatar: icon,
-      label: FittedBox(child: Text(payment)),
-      backgroundColor: const Color.fromRGBO(178, 219, 255, 1),
-      selectedColor: Colors.blue,
-      onSelected: (selected) {
-        if (selected) {
-          _chipSelectionPayment(payment);
-        }
-      },
-    );
-  }
 
   void _chipSelection(String category) {
     setState(() {
@@ -308,15 +351,15 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
         return;
       } else {
         setState(() {
-          dataPagamento = pickedDate;
+          _selectedDate = pickedDate;
         });
       }
     });
   }
 
-  _updateDate() {
+  void _updateDate() {
     setState(() {
-      dataPagamento = DateTime.now().copyWith(
+      _selectedDate = DateTime.now().copyWith(
         hour: 0,
         minute: 0,
         second: 0,
@@ -324,7 +367,6 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
         microsecond: 0,
       );
     });
-    (dataPagamento) => _submitFormGasto();
   }
 
   @override
@@ -336,9 +378,8 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
       resizeToAvoidBottomInset: true,
       backgroundColor: const Color.fromARGB(255, 230, 248, 244),
       appBar: AppBar(
-        title: Text("Adicionar gasto"),
+        title: const Text("Adicionar gasto"),
         backgroundColor: Colors.blue,
-        actions: [],
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12.0),
@@ -348,13 +389,13 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
             height: avaliableHeight,
             child: Column(
               children: [
-                Align(
+                const Align(
                   alignment: Alignment.centerLeft,
                   child: Text("Descrição"),
                 ),
                 TextField(
                   controller: _descricaoController,
-                  onSubmitted: (value) => _submitFormGasto,
+                  onSubmitted: (value) => _submitFormGasto(),
                   decoration: InputDecoration(
                       labelText: "Descrição",
                       fillColor: Colors.grey.shade200,
@@ -381,7 +422,7 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
                 ),
                 TextField(
                   controller: _valorController,
-                  onSubmitted: (value) => _submitFormGasto,
+                  onSubmitted: (value) => _submitFormGasto(),
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                       labelText: "Valor R\$",
@@ -418,61 +459,37 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
                 SizedBox(
                   height: avaliableHeight * 0.02,
                 ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text("Modo de pagamento"),
-                ),
-                Wrap(
-                  spacing: 4.0,
-                  children: _payMode.entries.map((entry) {
-                    return FractionallySizedBox(
-                      widthFactor: 1 / 3.2,
-                      child: _createChipPayment(entry.key, entry.value),
-                    );
-                  }).toList(),
-                ),
-                SizedBox(
-                  height: avaliableHeight * 0.02,
-                ),
-                Align(
+                const Align(
                   alignment: Alignment.centerLeft,
                   child: Text("Data do pagamento"),
                 ),
-                Container(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _updateDate();
-                              });
-                            },
-                            child: const Text("Hoje"),
-                          ),
-                          TextButton(
-                            onPressed: _showDatePicker,
-                            child: const Text("Em Breve"),
-                          ),
-                        ],
-                      ),
-                      // SizedBox(
-                      //   width: 40,
-                      // ),
-                      FittedBox(
-                          child: Text(
-                        (dataPagamento.year == DateTime.now().year &&
-                                dataPagamento.month == DateTime.now().month &&
-                                dataPagamento.day == DateTime.now().day)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: _updateDate,
+                          child: const Text("Hoje"),
+                        ),
+                        TextButton(
+                          onPressed: _showDatePicker,
+                          child: const Text("Em Breve"),
+                        ),
+                      ],
+                    ),
+                    FittedBox(
+                      child: Text(
+                        (_selectedDate.year == DateTime.now().year &&
+                                _selectedDate.month == DateTime.now().month &&
+                                _selectedDate.day == DateTime.now().day)
                             ? 'Hoje'
-                            : 'Data Selecionada: ${DateFormat('d/MMM/y', 'pt_BR').format(dataPagamento)}',
+                            : 'Data Selecionada: ${DateFormat('d/MMM/y', 'pt_BR').format(_selectedDate)}',
                         style: const TextStyle(fontSize: 12),
                         textAlign: TextAlign.center,
-                      )),
-                    ],
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -484,9 +501,7 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
                           color: Colors.blue,
                         ),
                         MaterialButton(
-                          onPressed: () async {
-                            _selectImage();
-                          },
+                          onPressed: _selectImage,
                           child: const Text(
                             "Anexar imagem",
                             style: TextStyle(color: Colors.blue),
@@ -502,9 +517,7 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
                     else
                       FittedBox(
                         child: InkWell(
-                          onTap: () {
-                            _showImagePopup();
-                          },
+                          onTap: _showImagePopup,
                           child: const Text('Ver imagem anexada'),
                         ),
                       ),

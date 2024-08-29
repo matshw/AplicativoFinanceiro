@@ -44,6 +44,8 @@ dependencies:
   flutter_localization: ^0.2.1
   firebase_storage: ^11.7.7
   flutter_speed_dial: ^7.0.0
+  firebase_auth: ^4.20.0
+  
 
 dev_dependencies:
   test: ^1.6.1

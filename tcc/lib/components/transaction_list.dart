@@ -1,58 +1,96 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class FirestoreService {
-  final CollectionReference ganhos =
-      FirebaseFirestore.instance.collection('ganhos');
-  final DocumentReference userInfo =
-      FirebaseFirestore.instance.collection('userInfo').doc('user_info');
-  Stream<QuerySnapshot> getGanhosStream() {
-    final ganhosStream =
-        ganhos.orderBy('dataRecebimento', descending: true).snapshots();
-    return ganhosStream;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Stream<QuerySnapshot> getTransactionsStream(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transacao')
+        .orderBy('data', descending: true)
+        .snapshots();
   }
 
-  Future<void> updateGanho(
+  Future<void> updateTransacao(
+    String uid,
     String docID,
     String descricao,
     double valor,
-    // String categoria,
-  ) {
-    return ganhos.doc(docID).update({
+    String tipo,
+  ) async {
+    double difference = 0.0;
+
+    DocumentSnapshot docSnapshot = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transacao')
+        .doc(docID)
+        .get();
+    if (docSnapshot.exists) {
+      double oldValor = docSnapshot['valor'] ?? 0.0;
+      difference = valor - oldValor;
+    }
+
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transacao')
+        .doc(docID)
+        .update({
       'descricao': descricao,
       'valor': valor,
-      // 'categoria': categoria,
     });
+
+    if (tipo == 'ganho') {
+      await _firestore.collection('users').doc(uid).update({
+        'saldoValue': FieldValue.increment(difference),
+        'ganhoValue': FieldValue.increment(difference)
+      });
+    } else if (tipo == 'gasto') {
+      await _firestore.collection('users').doc(uid).update({
+        'saldoValue': FieldValue.increment(-difference),
+        'gastoValue': FieldValue.increment(difference)
+      });
+    }
   }
 
-  Future<void> removeGanho(String docID, double valorGanho) async {
-    await ganhos.doc(docID).delete();
+  Future<void> removeTransacao(
+    String uid,
+    String docID,
+    double valor,
+    String tipo,
+  ) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transacao')
+        .doc(docID)
+        .delete();
 
-    await userInfo.update({
-      'saldoValue': FieldValue.increment(-valorGanho),
-      'ganhoValue': FieldValue.increment(-valorGanho)
-    });
-  }
-
-  Stream<DocumentSnapshot> getSaldoStream() {
-    return userInfo.snapshots();
-  }
-
-  Future<double> getSaldoTotal() async {
-    DocumentSnapshot docSnapshot = await userInfo.get();
-    if (docSnapshot.exists) {
-      return docSnapshot['saldoValue'] ?? 0.0;
-    } else {
-      return 0.0;
+    if (tipo == 'ganho') {
+      await _firestore.collection('users').doc(uid).update({
+        'saldoValue': FieldValue.increment(-valor),
+        'ganhoValue': FieldValue.increment(-valor)
+      });
+    } else if (tipo == 'gasto') {
+      await _firestore.collection('users').doc(uid).update({
+        'saldoValue': FieldValue.increment(valor),
+        'gastoValue': FieldValue.increment(-valor)
+      });
     }
   }
 }
 
 void _showChoiceDialog({
   required BuildContext context,
+  required String uid,
   required String docID,
-  required double valorGanho,
+  required double valor,
+  required String tipo,
 }) {
   showDialog(
     context: context,
@@ -64,7 +102,8 @@ void _showChoiceDialog({
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _showEditDialog(context: context, docID: docID);
+              _showEditDialog(
+                  context: context, uid: uid, docID: docID, tipo: tipo);
             },
             child: const Text("Editar"),
           ),
@@ -72,7 +111,11 @@ void _showChoiceDialog({
             onPressed: () {
               Navigator.of(context).pop();
               _showRemoveDialog(
-                  context: context, docID: docID, valorGanho: valorGanho);
+                  context: context,
+                  uid: uid,
+                  docID: docID,
+                  valor: valor,
+                  tipo: tipo);
             },
             child: const Text("Remover"),
           ),
@@ -90,13 +133,18 @@ void _showChoiceDialog({
 
 void _showEditDialog({
   required BuildContext context,
+  required String uid,
   required String docID,
+  required String tipo,
 }) {
   final descricaoController = TextEditingController();
   final valueController = TextEditingController();
-  
 
   FirestoreService firestoreService = FirestoreService();
+  final mediaQuery = MediaQuery.of(context);
+  final avaliableHeight = mediaQuery.size.height -
+      mediaQuery.padding.top -
+      mediaQuery.padding.bottom;
 
   showDialog(
     context: context,
@@ -104,7 +152,7 @@ void _showEditDialog({
       return AlertDialog(
         title: const Text("Editar Transação"),
         content: SizedBox(
-          height: 300,
+          height: avaliableHeight * 0.15,
           child: Column(
             children: [
               TextField(
@@ -116,17 +164,20 @@ void _showEditDialog({
                 decoration: const InputDecoration(labelText: 'Valor (R\$)'),
                 keyboardType: TextInputType.number,
               ),
-
             ],
           ),
         ),
         actions: [
-          ElevatedButton(
+          TextButton(
             onPressed: () {
               firestoreService
-                  .updateGanho(docID, descricaoController.text,
-                      double.tryParse(valueController.text) ?? 0.0
-                      )
+                  .updateTransacao(
+                uid,
+                docID,
+                descricaoController.text,
+                double.tryParse(valueController.text) ?? 0.0,
+                tipo,
+              )
                   .then((_) {
                 Navigator.of(context).pop();
               });
@@ -147,8 +198,10 @@ void _showEditDialog({
 
 void _showRemoveDialog({
   required BuildContext context,
+  required String uid,
   required String docID,
-  required double valorGanho,
+  required double valor,
+  required String tipo,
 }) {
   FirestoreService firestoreService = FirestoreService();
 
@@ -159,9 +212,11 @@ void _showRemoveDialog({
         title: const Text("Remover Transação"),
         content: const Text("Tem certeza que deseja remover esta transação?"),
         actions: [
-          ElevatedButton(
+          TextButton(
             onPressed: () {
-              firestoreService.removeGanho(docID, valorGanho).then((_) {
+              firestoreService
+                  .removeTransacao(uid, docID, valor, tipo)
+                  .then((_) {
                 Navigator.of(context).pop();
               });
             },
@@ -184,8 +239,12 @@ class TransactionList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    FirestoreService firestoreService = FirestoreService();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Center(child: Text("Usuário não autenticado."));
+    }
 
+    FirestoreService firestoreService = FirestoreService();
     final mediaQuery = MediaQuery.of(context);
     final availableHeight = mediaQuery.size.height -
         mediaQuery.padding.top -
@@ -203,7 +262,7 @@ class TransactionList extends StatelessWidget {
       ),
       height: availableHeight * 0.38,
       child: StreamBuilder<QuerySnapshot>(
-        stream: firestoreService.getGanhosStream(),
+        stream: firestoreService.getTransactionsStream(user.uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -219,32 +278,35 @@ class TransactionList extends StatelessWidget {
             );
           }
 
-          List ganhosList = snapshot.data!.docs;
+          List transacoesList = snapshot.data!.docs;
 
           return ListView.builder(
-            itemCount: ganhosList.length,
+            itemCount: transacoesList.length,
             itemBuilder: (context, index) {
-              DocumentSnapshot document = ganhosList[index];
+              DocumentSnapshot document = transacoesList[index];
               String docID = document.id;
 
               Map<String, dynamic> data =
                   document.data() as Map<String, dynamic>;
-              String ganhoDescricao = data['descricao'];
-              double ganhoValor = data['valor'];
-              Timestamp ganhoDataTimestamp = data['dataRecebimento'];
-              DateTime ganhoData = ganhoDataTimestamp.toDate();
+              String transacaoDescricao = data['descricao'];
+              double transacaoValor = data['valor'];
+              String tipo = data['tipo'];
+              Timestamp dateTimestamp = data['data'];
+              DateTime date = dateTimestamp.toDate();
 
               return InkWell(
                 onTap: () {
                   _showChoiceDialog(
                     context: context,
+                    uid: user.uid,
                     docID: docID,
-                    valorGanho: ganhoValor,
+                    valor: transacaoValor,
+                    tipo: tipo,
                   );
                 },
                 child: ListTile(
                   title: Text(
-                    DateFormat.yMMMMEEEEd('pt_BR').format(ganhoData),
+                    DateFormat.yMMMMEEEEd('pt_BR').format(date),
                     style: const TextStyle(fontSize: 15),
                   ),
                   subtitle: Row(
@@ -252,18 +314,20 @@ class TransactionList extends StatelessWidget {
                     children: [
                       FittedBox(
                         child: Text(
-                          "R\$ ${ganhoValor.toStringAsFixed(2)}",
-                          style: const TextStyle(
+                          tipo == 'ganho'
+                              ? "R\$ ${transacaoValor.toStringAsFixed(2)}"
+                              : "R\$ -${transacaoValor.toStringAsFixed(2)}",
+                          style: TextStyle(
                             fontSize: 18,
-                            color: Colors.green,
+                            color: tipo == 'ganho' ? Colors.green : Colors.red,
                           ),
                         ),
                       ),
                       Text(
-                        ganhoDescricao,
-                        style: const TextStyle(
+                        transacaoDescricao,
+                        style: TextStyle(
                           fontSize: 18,
-                          color: Colors.green,
+                          color: tipo == 'ganho' ? Colors.green : Colors.red,
                         ),
                       ),
                     ],

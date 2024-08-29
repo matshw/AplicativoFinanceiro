@@ -1,30 +1,38 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class FirestoreService {
-  final DocumentReference userInfo =
-      FirebaseFirestore.instance.collection('userInfo').doc('user_info');
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Stream<DocumentSnapshot> getSaldoStream() {
-    return userInfo.snapshots();
+  Stream<DocumentSnapshot<Map<String, dynamic>>> getSaldoStream(String uid) {
+    return _firestore.collection('users').doc(uid).snapshots();
   }
 
-  Future<Map<String, double>> getInfo() async {
+  Future<Map<String, double>> getInfo(String uid) async {
     try {
-      DocumentSnapshot doc = await userInfo.get();
-      if (doc.exists) {
-        double ganhoValue = doc['ganhoValue'] ?? 0.0;
-        double saldoValue = doc['saldoValue'] ?? 0.0;
-        double gastoValue = doc['gastoValue'] ?? 0.0;
+      DocumentSnapshot<Map<String, dynamic>> doc =
+          await _firestore.collection('users').doc(uid).get();
+
+      if (doc.exists && doc.data() != null) {
+        double ganhoValue = doc.data()?['ganhoValue']?.toDouble() ?? 0.0;
+        double saldoValue = doc.data()?['saldoValue']?.toDouble() ?? 0.0;
+        double gastoValue = doc.data()?['gastoValue']?.toDouble() ?? 0.0;
         return {
           'ganhoValue': ganhoValue,
           'saldoValue': saldoValue,
           'gastoValue': gastoValue
         };
       } else {
+        await _firestore.collection('users').doc(uid).set({
+          'ganhoValue': 0.0,
+          'saldoValue': 0.0,
+          'gastoValue': 0.0,
+        });
         return {'ganhoValue': 0.0, 'saldoValue': 0.0, 'gastoValue': 0.0};
       }
     } catch (e) {
+      print("Erro ao obter informações: $e");
       return {'ganhoValue': 0.0, 'saldoValue': 0.0, 'gastoValue': 0.0};
     }
   }
@@ -44,7 +52,7 @@ class CardBalance extends StatefulWidget {
 }
 
 class _CardBalanceState extends State<CardBalance> {
-  FirestoreService _firestoreService = FirestoreService();
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   void initState() {
@@ -53,7 +61,10 @@ class _CardBalanceState extends State<CardBalance> {
   }
 
   Future<void> _loadInfo() async {
-    Map<String, double> info = await _firestoreService.getInfo();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    Map<String, double> info = await _firestoreService.getInfo(user.uid);
     setState(() {
       widget.ganhoValue = info['ganhoValue'];
       widget.saldoValue = info['saldoValue'];
@@ -63,6 +74,11 @@ class _CardBalanceState extends State<CardBalance> {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Center(child: Text('Erro: usuário não autenticado.'));
+    }
+
     final mediaQuery = MediaQuery.of(context);
     final avaliableHeight = mediaQuery.size.height -
         mediaQuery.padding.top -
@@ -76,15 +92,21 @@ class _CardBalanceState extends State<CardBalance> {
           borderRadius: BorderRadius.circular(10),
           color: const Color.fromARGB(255, 165, 226, 245),
         ),
-        child: StreamBuilder<DocumentSnapshot>(
-          stream: _firestoreService.getSaldoStream(),
+        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: _firestoreService.getSaldoStream(user.uid),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
               return const Center(child: Text('Erro ao carregar dados'));
             } else if (snapshot.hasData) {
-              var data = snapshot.data!.data() as Map<String, dynamic>;
+              var data = snapshot.data?.data();
+
+              if (data == null) {
+                // Handle the case where the data is null
+                return const Center(child: Text('Nenhum dado disponível'));
+              }
+
               double ganhoValue = data['ganhoValue'] ?? 0.0;
               double saldoValue = data['saldoValue'] ?? 0.0;
               double gastoValue = data['gastoValue'] ?? 0.0;
@@ -165,7 +187,7 @@ class _CardBalanceState extends State<CardBalance> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              FittedBox(
+                              const FittedBox(
                                 child: Text(
                                   "Gasto",
                                   style: TextStyle(
@@ -175,14 +197,14 @@ class _CardBalanceState extends State<CardBalance> {
                               FittedBox(
                                 child: Text(
                                   "R\$ ${gastoValue.toStringAsFixed(2)}",
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                       color: Colors.red, fontSize: 18),
                                 ),
                               ),
                             ],
                           ),
-                          SizedBox(width: 8),
-                          Align(
+                          const SizedBox(width: 8),
+                          const Align(
                             alignment: Alignment.bottomLeft,
                             child: Row(
                               children: [

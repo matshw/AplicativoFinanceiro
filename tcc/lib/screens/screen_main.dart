@@ -8,103 +8,94 @@ import 'package:tcc/components/transaction_list.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
 class ScreenMain extends StatefulWidget {
-  const ScreenMain({super.key});
+  const ScreenMain();
 
   @override
   State<ScreenMain> createState() => _ScreenMainState();
 }
 
 class _ScreenMainState extends State<ScreenMain> {
-  double _gasto = 0.00;
-  double _ganho = 0.00;
-  double _saldoTotal = 0.00;
   final ValueNotifier<Map<String, double>> balanceNotifier =
       ValueNotifier({'ganhoValue': 0.0, 'saldoValue': 0.0, 'gastoValue': 0.0});
-  final ValueNotifier<Map<String, double>> balanceNotifierGasto =
-      ValueNotifier({'saldoValue': 0.0, 'gastoValue': 0.0});
 
-  void _addGanho(String description, String category, double value,
-      DateTime date, String imagem) {
-    setState(() {
-      _updateBalance(value);
-    });
-  }
-
-  void _addGasto(
+  void _addTransacao(
     String descricao,
     String categoria,
+    String tipo,
     double valor,
+    DateTime dataRecebimento,
+    String? imagem,
   ) {
-    // DateTime dataPagamento, String imagem) {
     setState(() {
-      _updateBalanceGasto(valor);
+      if (tipo == 'ganho') {
+        _updateBalanceGanho(valor);
+      } else if (tipo == 'gasto') {
+        _updateBalanceGasto(valor);
+      }
     });
   }
 
-  void _updateBalanceGasto(double value) {
-    balanceNotifierGasto.value = {
-      'gastoValue': balanceNotifier.value['gastoValue']! + value,
-      'saldoValue': balanceNotifier.value['saldoValue']! - value,
-    };
-  }
-
-  void _updateBalance(double value) {
+  void _updateBalanceGanho(double value) {
     balanceNotifier.value = {
       'ganhoValue': balanceNotifier.value['ganhoValue']! + value,
       'saldoValue': balanceNotifier.value['saldoValue']! + value,
+      'gastoValue': balanceNotifier.value['gastoValue']!,
     };
   }
 
-  void _openTransactionFormModalGanho(BuildContext context) {
+  void _updateBalanceGasto(double value) {
+    balanceNotifier.value = {
+      'gastoValue': balanceNotifier.value['gastoValue']! + value,
+      'saldoValue': balanceNotifier.value['saldoValue']! - value,
+      'ganhoValue': balanceNotifier.value['ganhoValue']!,
+    };
+  }
+
+  void _openTransactionFormModalGanho() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (BuildContext context) {
-        return TransactionForm(_addGanho, balanceNotifier);
+        return TransactionForm(_addTransacao, balanceNotifier);
       },
     );
   }
 
-  void _openTransactionFormModalGasto(BuildContext context) {
+  void _openTransactionFormModalGasto() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (BuildContext context) {
-        return TransactionFormGasto(
-          balanceNotifierGasto,
-          _addGasto,
-        );
+        return TransactionFormGasto(balanceNotifier, _addTransacao);
       },
     );
-  }
-
-  void _openForm() {
-    _openTransactionFormModalGanho(context);
-  }
-
-  void _openFormGasto() {
-    _openTransactionFormModalGasto(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    final avaliableHeight = mediaQuery.size.height -
+    final availableHeight = mediaQuery.size.height -
         mediaQuery.padding.top -
         mediaQuery.padding.bottom;
+
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 230, 248, 244),
-      appBar: AppbarCustomized(_openForm),
+      appBar: AppbarCustomized(_openTransactionFormModalGanho),
       body: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              height: avaliableHeight * 0.02,
+              height: availableHeight * 0.02,
             ),
-            CardBalance(_openForm, _ganho, _saldoTotal, _gasto),
+            CardBalance(
+              _openTransactionFormModalGanho,
+              balanceNotifier.value['ganhoValue'] ?? 0.0,
+              balanceNotifier.value['saldoValue'] ?? 0.0,
+              balanceNotifier.value['gastoValue'] ?? 0.0,
+            ),
             SizedBox(
-              height: avaliableHeight * 0.04,
+              height: availableHeight * 0.04,
             ),
             Padding(
               padding: const EdgeInsets.only(left: 10),
@@ -127,18 +118,18 @@ class _ScreenMainState extends State<ScreenMain> {
         overlayOpacity: 0.4,
         children: [
           SpeedDialChild(
-            shape: CircleBorder(),
+            shape: const CircleBorder(),
             backgroundColor: Colors.green,
-            child: FaIcon(FontAwesomeIcons.arrowUp),
+            child: const FaIcon(FontAwesomeIcons.arrowUp),
             label: "Ganho",
-            onTap: _openForm,
+            onTap: _openTransactionFormModalGanho,
           ),
           SpeedDialChild(
-            shape: CircleBorder(),
+            shape: const CircleBorder(),
             backgroundColor: Colors.red,
-            child: FaIcon(FontAwesomeIcons.arrowDown),
+            child: const FaIcon(FontAwesomeIcons.arrowDown),
             label: "Gasto",
-            onTap: _openFormGasto,
+            onTap: _openTransactionFormModalGasto,
           )
         ],
       ),

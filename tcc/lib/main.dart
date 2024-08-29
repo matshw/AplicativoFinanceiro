@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:tcc/screens/screen_login.dart';
+import 'package:tcc/screens/screen_register.dart';
 import 'package:tcc/screens/screen_tabs.dart';
 import 'firebase_options.dart';
 import 'utils/app-routes.dart';
@@ -56,7 +58,9 @@ class _FinanceiroAppState extends State<FinanceiroApp> {
       ),
       initialRoute: AppRoutes.HOME,
       routes: {
-        AppRoutes.HOME: (ctx) => ScreenTabs(),
+        AppRoutes.HOME: (ctx) => const ScreenLogin(),
+        AppRoutes.INICIAL: (ctx) => ScreenTabs(),
+        AppRoutes.REGISTRO: (ctx) => const ScreenRegister(),
       },
     );
   }

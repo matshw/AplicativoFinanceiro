@@ -14,7 +14,7 @@ class _ScreenTabsState extends State<ScreenTabs> {
 
   final List<Map<String, Object>> _screens = [
     {
-      'title': "Principal",
+      'title': "Inicio",
       'screen': ScreenMain(),
     },
     {
@@ -56,7 +56,7 @@ class _ScreenTabsState extends State<ScreenTabs> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
-            label: "Principal",
+            label: "Inicio",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.attach_money),

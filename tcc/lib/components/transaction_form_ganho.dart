@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,45 +18,57 @@ class TransactionForm extends StatefulWidget {
 }
 
 class FirestoreService {
-  final CollectionReference ganhos =
-      FirebaseFirestore.instance.collection('ganhos');
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> addGanho(
+  Future<void> addTransacao(
+    String uid,
     String descricao,
     String categoria,
+    String tipo,
     double valor,
-    DateTime dataRecebimento,
+    DateTime data,
     String? imagem,
   ) async {
     try {
-      await ganhos.add({
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('transacao')
+          .add({
         'descricao': descricao,
         'categoria': categoria,
+        'tipo': tipo,
         'valor': valor,
-        'dataRecebimento': dataRecebimento,
+        'data': data,
         'imagem': imagem ?? '',
       });
-    } catch (e) {}
+    } catch (e) {
+      print("Erro ao adicionar transação: $e");
+    }
   }
 
-  final DocumentReference userInfo =
-      FirebaseFirestore.instance.collection('userInfo').doc('user_info');
-
   Future<void> updateInfo(
+    String uid,
     double ganhoValue,
     double saldoValue,
   ) async {
     try {
-      await userInfo.set({
-        'ganhoValue': ganhoValue,
-        'saldoValue': saldoValue,
+      DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
+    double currentGanhoValue = doc['ganhoValue'] ?? 0.0;
+    double currentSaldoValue = doc['saldoValue'] ?? 0.0;
+      await _firestore.collection('users').doc(uid).set({
+        'ganhoValue': currentGanhoValue + ganhoValue,
+        'saldoValue': currentSaldoValue + saldoValue,
       }, SetOptions(merge: true));
-    } catch (e) {}
+    } catch (e) {
+      print("Erro ao atualizar informações: $e");
+    }
   }
 
-  Future<Map<String, double>> getInfo() async {
+  Future<Map<String, double>> getInfo(String uid) async {
     try {
-      DocumentSnapshot doc = await userInfo.get();
+      DocumentSnapshot doc =
+          await _firestore.collection('users').doc(uid).get();
       if (doc.exists) {
         double ganhoValue = doc['ganhoValue'] ?? 0.0;
         double saldoValue = doc['saldoValue'] ?? 0.0;
@@ -64,7 +77,86 @@ class FirestoreService {
         return {'ganhoValue': 0.0, 'saldoValue': 0.0};
       }
     } catch (e) {
+      print("Erro ao obter informações: $e");
       return {'ganhoValue': 0.0, 'saldoValue': 0.0};
+    }
+  }
+
+  Stream<QuerySnapshot> getTransactionsStream(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transacao')
+        .orderBy('data', descending: true)
+        .snapshots();
+  }
+
+  Stream<DocumentSnapshot> getSaldoStream(String uid) {
+    return _firestore.collection('users').doc(uid).snapshots();
+  }
+
+  Future<void> updateTransacao(
+    String uid,
+    String docID,
+    String descricao,
+    double valor,
+    String tipo,
+  ) async {
+    double difference = 0.0;
+
+    DocumentSnapshot docSnapshot = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transacao')
+        .doc(docID)
+        .get();
+    if (docSnapshot.exists) {
+      double oldValor = docSnapshot['valor'] ?? 0.0;
+      difference = valor - oldValor;
+    }
+
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transacao')
+        .doc(docID)
+        .update({
+      'descricao': descricao,
+      'valor': valor,
+    });
+
+    if (tipo == 'ganho') {
+      await _firestore.collection('users').doc(uid).update({
+        'saldoValue': FieldValue.increment(difference),
+        'ganhoValue': FieldValue.increment(difference)
+      });
+    } else if (tipo == 'gasto') {
+      await _firestore.collection('users').doc(uid).update({
+        'saldoValue': FieldValue.increment(-difference),
+        'gastoValue': FieldValue.increment(difference)
+      });
+    }
+  }
+
+  Future<void> removeTransacao(
+      String uid, String docID, double valor, String tipo) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transacao')
+        .doc(docID)
+        .delete();
+
+    if (tipo == 'ganho') {
+      await _firestore.collection('users').doc(uid).update({
+        'saldoValue': FieldValue.increment(-valor),
+        'ganhoValue': FieldValue.increment(-valor)
+      });
+    } else if (tipo == 'gasto') {
+      await _firestore.collection('users').doc(uid).update({
+        'saldoValue': FieldValue.increment(valor),
+        'gastoValue': FieldValue.increment(-valor)
+      });
     }
   }
 }
@@ -79,19 +171,6 @@ class _TransactionFormState extends State<TransactionForm> {
   final FirestoreService _firestoreService = FirestoreService();
   String? _selectedCategory;
   String? imageURL;
-  @override
-  void initState() {
-    super.initState();
-    _loadInfo();
-  }
-
-  Future<void> _loadInfo() async {
-    Map<String, double> info = await _firestoreService.getInfo();
-    setState(() {
-      ganhoValue = info['ganhoValue']!;
-      saldoValue = info['saldoValue']!;
-    });
-  }
 
   void _showError(String message) {
     showDialog(
@@ -114,37 +193,36 @@ class _TransactionFormState extends State<TransactionForm> {
   }
 
   void _submitForm() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showError("Erro: usuário não autenticado.");
+      return;
+    }
+
     final description = _descriptionController.text;
     final category = _selectedCategory;
-
     final value = double.tryParse(_valueController.text) ?? 0.0;
 
-    if (description.isEmpty) {
-      _showError("Descrição não pode estar vazia.");
+    if (description.isEmpty || value <= 0 || category == null) {
+      _showError("Preencha todos os campos.");
       return;
     }
-    if (value <= 0) {
-      _showError("Valor deve ser maior que zero.");
-      return;
-    }
-    if (category == null) {
-      _showError("Categoria não selecionada.");
-      return;
-    }
-    ganhoValue = ganhoValue + value;
-    saldoValue = saldoValue + value;
+
+    double newSaldoValue = value;
+    double newGanhoValue = value;
+
     try {
-      await FirestoreService()
-          .addGanho(description, category, value, _selectedDate, imageURL);
-      await FirestoreService().updateInfo(ganhoValue, saldoValue);
+      await _firestoreService.addTransacao(user.uid, description, category,
+          "ganho", value, _selectedDate, imageURL);
+      await _firestoreService.updateInfo(
+          user.uid, newGanhoValue, newSaldoValue);
       widget.balanceNotifier.value = {
-        'ganhoValue': ganhoValue,
-        'saldoValue': saldoValue,
+        'ganhoValue': ganhoValue + newGanhoValue,
+        'saldoValue': saldoValue + newSaldoValue,
       };
       Navigator.of(context).pop();
     } catch (e) {
-      print("erro ${e}");
-      _showError("Erro ao adicionar transação");
+      _showError("Erro ao adicionar transação.");
     }
   }
 
@@ -267,7 +345,6 @@ class _TransactionFormState extends State<TransactionForm> {
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-
     final avaliableHeight = mediaQuery.size.height - mediaQuery.padding.top;
 
     return Scaffold(
@@ -293,7 +370,7 @@ class _TransactionFormState extends State<TransactionForm> {
                   ),
                 ),
                 TextField(
-                  onSubmitted: (value) => _submitForm,
+                  onSubmitted: (value) => _submitForm(),
                   controller: _descriptionController,
                   decoration: InputDecoration(
                       labelText: "Descrição",
@@ -320,7 +397,7 @@ class _TransactionFormState extends State<TransactionForm> {
                   child: Text("Valor (R\$)"),
                 ),
                 TextField(
-                  onSubmitted: (value) => _submitForm,
+                  onSubmitted: (value) => _submitForm(),
                   controller: _valueController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
@@ -378,7 +455,7 @@ class _TransactionFormState extends State<TransactionForm> {
                         ),
                       ],
                     ),
-                    if (imageExists == false)
+                    if (!imageExists)
                       const Text(
                         "Nenhuma imagem selecionada",
                         style: TextStyle(fontSize: 12),
