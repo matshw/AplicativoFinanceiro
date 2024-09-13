@@ -6,6 +6,7 @@ import 'package:tcc/components/transaction_form_ganho.dart';
 import 'package:tcc/components/transaction_form_gasto.dart';
 import 'package:tcc/components/transaction_list.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import 'package:tcc/components/transaction_list_future.dart';
 
 class ScreenMain extends StatefulWidget {
   const ScreenMain();
@@ -19,13 +20,13 @@ class _ScreenMainState extends State<ScreenMain> {
       ValueNotifier({'ganhoValue': 0.0, 'saldoValue': 0.0, 'gastoValue': 0.0});
 
   void _addTransacao(
-    String descricao,
-    String categoria,
-    String tipo,
-    double valor,
-    DateTime dataRecebimento,
-    String? imagem,
-  ) {
+      String descricao,
+      String categoria,
+      String tipo,
+      double valor,
+      DateTime dataRecebimento,
+      String? imagem,
+      String meioPagamento) {
     setState(() {
       if (tipo == 'ganho') {
         _updateBalanceGanho(valor);
@@ -108,6 +109,20 @@ class _ScreenMainState extends State<ScreenMain> {
               ),
             ),
             const TransactionList(),
+            SizedBox(
+              height: availableHeight * 0.01,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 10),
+              child: Container(
+                alignment: Alignment.topLeft,
+                child: const Text(
+                  "Transações pendentes",
+                  textAlign: TextAlign.left,
+                ),
+              ),
+            ),
+            FutureTransactionList(),
           ],
         ),
       ),

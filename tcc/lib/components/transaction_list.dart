@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +13,7 @@ class FirestoreService {
         .collection('users')
         .doc(uid)
         .collection('transacao')
+        .where('tipo', isNotEqualTo: 'futura')
         .orderBy('data', descending: true)
         .snapshots();
   }
@@ -91,6 +94,7 @@ void _showChoiceDialog({
   required String docID,
   required double valor,
   required String tipo,
+  required String descricao,
 }) {
   showDialog(
     context: context,
@@ -103,7 +107,12 @@ void _showChoiceDialog({
             onPressed: () {
               Navigator.of(context).pop();
               _showEditDialog(
-                  context: context, uid: uid, docID: docID, tipo: tipo);
+                  context: context,
+                  uid: uid,
+                  docID: docID,
+                  tipo: tipo,
+                  descricao: descricao,
+                  valor: valor);
             },
             child: const Text("Editar"),
           ),
@@ -111,11 +120,12 @@ void _showChoiceDialog({
             onPressed: () {
               Navigator.of(context).pop();
               _showRemoveDialog(
-                  context: context,
-                  uid: uid,
-                  docID: docID,
-                  valor: valor,
-                  tipo: tipo);
+                context: context,
+                uid: uid,
+                docID: docID,
+                valor: valor,
+                tipo: tipo,
+              );
             },
             child: const Text("Remover"),
           ),
@@ -136,9 +146,11 @@ void _showEditDialog({
   required String uid,
   required String docID,
   required String tipo,
+  required String descricao,
+  required double valor,
 }) {
-  final descricaoController = TextEditingController();
-  final valueController = TextEditingController();
+  final descricaoController = TextEditingController(text: descricao);
+  final valueController = TextEditingController(text: valor.toStringAsFixed(2));
 
   FirestoreService firestoreService = FirestoreService();
   final mediaQuery = MediaQuery.of(context);
@@ -260,7 +272,7 @@ class TransactionList extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(10),
       ),
-      height: availableHeight * 0.38,
+      height: availableHeight * 0.28,
       child: StreamBuilder<QuerySnapshot>(
         stream: firestoreService.getTransactionsStream(user.uid),
         builder: (context, snapshot) {
@@ -269,6 +281,7 @@ class TransactionList extends StatelessWidget {
               child: CircularProgressIndicator(),
             );
           } else if (snapshot.hasError) {
+            print("Erro: ${snapshot.hasError}");
             return const Center(
               child: Text("Erro ao carregar dados"),
             );
@@ -278,7 +291,7 @@ class TransactionList extends StatelessWidget {
             );
           }
 
-          List transacoesList = snapshot.data!.docs;
+          List<DocumentSnapshot> transacoesList = snapshot.data!.docs;
 
           return ListView.builder(
             itemCount: transacoesList.length,
@@ -297,12 +310,12 @@ class TransactionList extends StatelessWidget {
               return InkWell(
                 onTap: () {
                   _showChoiceDialog(
-                    context: context,
-                    uid: user.uid,
-                    docID: docID,
-                    valor: transacaoValor,
-                    tipo: tipo,
-                  );
+                      context: context,
+                      uid: user.uid,
+                      docID: docID,
+                      valor: transacaoValor,
+                      tipo: tipo,
+                      descricao: transacaoDescricao);
                 },
                 child: ListTile(
                   title: Text(

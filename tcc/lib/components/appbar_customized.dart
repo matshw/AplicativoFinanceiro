@@ -16,13 +16,7 @@ class AppbarCustomized extends StatelessWidget implements PreferredSizeWidget {
         style: TextStyle(fontSize: 20),
       ),
       backgroundColor: Theme.of(context).colorScheme.primary,
-      actions: [
-        IconButton(
-          onPressed: openForm,
-          icon: const Icon(Icons.add),
-          tooltip: 'Adicionar Transação',
-        ),
-      ],
+      actions: [],
     );
   }
 }

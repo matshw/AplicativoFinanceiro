@@ -21,49 +21,53 @@ class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<void> addTransacao(
-    String uid,
-    String descricao,
-    String categoria,
-    String tipo,
-    double valor,
-    DateTime data,
-    String? imagem,
-  ) async {
-    try {
-      await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('transacao')
-          .add({
-        'descricao': descricao,
-        'categoria': categoria,
-        'tipo': tipo,
-        'valor': valor,
-        'data': data,
-        'imagem': imagem ?? '',
-      });
-    } catch (e) {
-      print("Erro ao adicionar transação: $e");
-    }
+  String uid,
+  String descricao,
+  String categoria,
+  String tipo,
+  double valor,
+  DateTime data,
+  String? imagem,
+) async {
+  try {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transacao')
+        .add({
+      'descricao': descricao,
+      'categoria': categoria,
+      'tipo': tipo, 
+      'valor': valor,
+      'data': data,
+      'imagem': imagem ?? '',
+    });
+  } catch (e) {
+    print("Erro ao adicionar transação: $e");
   }
+}
+
 
   Future<void> updateInfo(
-    String uid,
-    double ganhoValue,
-    double saldoValue,
-  ) async {
-    try {
-      DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
+  String uid,
+  double ganhoValue,
+  double saldoValue,
+) async {
+  try {
+    DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
+
     double currentGanhoValue = doc['ganhoValue'] ?? 0.0;
     double currentSaldoValue = doc['saldoValue'] ?? 0.0;
-      await _firestore.collection('users').doc(uid).set({
-        'ganhoValue': currentGanhoValue + ganhoValue,
-        'saldoValue': currentSaldoValue + saldoValue,
-      }, SetOptions(merge: true));
-    } catch (e) {
-      print("Erro ao atualizar informações: $e");
-    }
+
+    await _firestore.collection('users').doc(uid).update({
+      'ganhoValue': currentGanhoValue + ganhoValue,  
+      'saldoValue': currentSaldoValue + saldoValue, 
+    });
+  } catch (e) {
+    print("Erro ao atualizar informações: $e");
   }
+}
+
 
   Future<Map<String, double>> getInfo(String uid) async {
     try {
@@ -212,18 +216,37 @@ class _TransactionFormState extends State<TransactionForm> {
     double newGanhoValue = value;
 
     try {
-      await _firestoreService.addTransacao(user.uid, description, category,
-          "ganho", value, _selectedDate, imageURL);
-      await _firestoreService.updateInfo(
-          user.uid, newGanhoValue, newSaldoValue);
-      widget.balanceNotifier.value = {
-        'ganhoValue': ganhoValue + newGanhoValue,
-        'saldoValue': saldoValue + newSaldoValue,
-      };
-      Navigator.of(context).pop();
-    } catch (e) {
-      _showError("Erro ao adicionar transação.");
-    }
+  await _firestoreService.addTransacao(
+    user.uid,           
+    description,        
+    category,           
+    "ganho",           
+    value,              
+    _selectedDate,      
+    imageURL            
+  );
+
+  await _firestoreService.updateInfo(
+    user.uid,
+    newGanhoValue,      
+    newSaldoValue       
+  );
+
+  setState(() {
+    ganhoValue += newGanhoValue; 
+    saldoValue += newSaldoValue;  
+  });
+
+  widget.balanceNotifier.value = {
+    'ganhoValue': ganhoValue,  
+    'saldoValue': saldoValue,  
+  };
+
+  Navigator.of(context).pop();
+} catch (e) {
+  _showError("Erro ao adicionar transação de ganho.");
+}
+
   }
 
   final Map<String, FaIcon> _categories = {
@@ -235,30 +258,6 @@ class _TransactionFormState extends State<TransactionForm> {
     'Consultoria': const FaIcon(FontAwesomeIcons.magnifyingGlassDollar),
     'Outros': const FaIcon(FontAwesomeIcons.circleQuestion),
   };
-
-  Widget _createChip(String category, FaIcon icon) {
-    return ChoiceChip(
-      shape: RoundedRectangleBorder(
-          side: const BorderSide(
-            color: Colors.blue,
-          ),
-          borderRadius: BorderRadius.circular(8.0)),
-      selected: _selectedCategory == category,
-      avatar: icon,
-      label: FittedBox(child: Text(category)),
-      backgroundColor: const Color.fromRGBO(178, 219, 255, 1),
-      selectedColor: Colors.blue,
-      onSelected: (selected) {
-        _chipSelection(category);
-      },
-    );
-  }
-
-  void _chipSelection(String category) {
-    setState(() {
-      _selectedCategory = category;
-    });
-  }
 
   void _selectImage() async {
     ImagePicker imagePicker = ImagePicker();
@@ -284,7 +283,9 @@ class _TransactionFormState extends State<TransactionForm> {
           imageURL = newImageURL;
           imageExists = true;
         });
-      } catch (e) {}
+      } catch (e) {
+        _showError("Erro ao carregar imagem.");
+      }
     }
   }
 
@@ -312,34 +313,20 @@ class _TransactionFormState extends State<TransactionForm> {
         });
   }
 
-  _showDatePicker() {
+  void _showDatePicker() {
     showDatePicker(
-            context: context,
-            firstDate: DateTime(2020),
-            lastDate: DateTime.now(),
-            locale: const Locale('pt', 'BR'))
-        .then((pickedDate) {
-      if (pickedDate == null) {
-        return;
-      } else {
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDate: _selectedDate,
+      locale: const Locale('pt', 'BR'),
+    ).then((pickedDate) {
+      if (pickedDate != null && pickedDate != _selectedDate) {
         setState(() {
           _selectedDate = pickedDate;
         });
       }
     });
-  }
-
-  _updateDate() {
-    setState(() {
-      _selectedDate = DateTime.now().copyWith(
-        hour: 0,
-        minute: 0,
-        second: 0,
-        millisecond: 0,
-        microsecond: 0,
-      );
-    });
-    (_selectedDate) => _submitForm();
   }
 
   @override
@@ -352,7 +339,6 @@ class _TransactionFormState extends State<TransactionForm> {
       appBar: AppBar(
         backgroundColor: Colors.blue,
         title: const Text("Adicionar Ganho"),
-        actions: [],
       ),
       resizeToAvoidBottomInset: true,
       body: Padding(
@@ -365,76 +351,110 @@ class _TransactionFormState extends State<TransactionForm> {
               children: <Widget>[
                 const Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(
-                    "Descrição",
-                  ),
+                  child: Text("Descrição"),
                 ),
                 TextField(
-                  onSubmitted: (value) => _submitForm(),
                   controller: _descriptionController,
                   decoration: InputDecoration(
-                      labelText: "Descrição",
-                      fillColor: Colors.grey.shade200,
-                      filled: true,
-                      enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: const BorderSide(
-                            color: Colors.blue,
-                            width: 1.0,
-                          )),
-                      focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: const BorderSide(
-                            color: Colors.blue,
-                            width: 2.0,
-                          ))),
+                    labelText: "Descrição",
+                    fillColor: Colors.grey.shade200,
+                    filled: true,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                      borderSide: const BorderSide(
+                        color: Colors.blue,
+                        width: 1.0,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                      borderSide: const BorderSide(
+                        color: Colors.blue,
+                        width: 2.0,
+                      ),
+                    ),
+                  ),
                 ),
-                SizedBox(
-                  height: avaliableHeight * 0.05,
-                ),
+                SizedBox(height: avaliableHeight * 0.05),
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text("Valor (R\$)"),
                 ),
                 TextField(
-                  onSubmitted: (value) => _submitForm(),
                   controller: _valueController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                      labelText: "Valor R\$",
-                      fillColor: Colors.grey.shade200,
-                      filled: true,
-                      enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15.0),
-                          borderSide: const BorderSide(
-                            color: Colors.blue,
-                            width: 1.0,
-                          )),
-                      focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15.0),
-                          borderSide: const BorderSide(
-                            color: Colors.blue,
-                            width: 2.0,
-                          ))),
+                    labelText: "Valor R\$",
+                    fillColor: Colors.grey.shade200,
+                    filled: true,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15.0),
+                      borderSide: const BorderSide(
+                        color: Colors.blue,
+                        width: 1.0,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15.0),
+                      borderSide: const BorderSide(
+                        color: Colors.blue,
+                        width: 2.0,
+                      ),
+                    ),
+                  ),
                 ),
-                SizedBox(
-                  height: avaliableHeight * 0.05,
-                ),
+                SizedBox(height: avaliableHeight * 0.05),
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text("Categoria"),
                 ),
-                Wrap(
-                  spacing: 8.0,
-                  children: _categories.entries.map((entry) {
-                    return FractionallySizedBox(
-                        widthFactor: 1 / 3.5,
-                        child: _createChip(entry.key, entry.value));
-                  }).toList(),
+                Align(
+                  alignment: Alignment.center,
+                  child: DropdownButton<String>(
+                    value: _selectedCategory,
+                    items: _categories.entries.map((entry) {
+                      return DropdownMenuItem<String>(
+                        value: entry.key,
+                        child: Row(
+                          children: [
+                            entry.value,
+                            const SizedBox(width: 8),
+                            Text(entry.key),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (newValue) {
+                      setState(() {
+                        _selectedCategory = newValue;
+                      });
+                    },
+                    hint: const Text("Selecione uma categoria"),
+                  ),
                 ),
-                SizedBox(
-                  height: avaliableHeight * 0.05,
+                SizedBox(height: avaliableHeight * 0.05),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Data de recebimento"),
                 ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        DateFormat('dd/MM/yyyy').format(_selectedDate),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.calendar_today),
+                      onPressed: _showDatePicker,
+                    ),
+                  ],
+                ),
+                SizedBox(height: avaliableHeight * 0.05),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -455,77 +475,29 @@ class _TransactionFormState extends State<TransactionForm> {
                         ),
                       ],
                     ),
-                    if (!imageExists)
-                      const Text(
-                        "Nenhuma imagem selecionada",
-                        style: TextStyle(fontSize: 12),
+                    if (imageExists)
+                      TextButton(
+                        onPressed: _showImagePopup,
+                        child: const Text(
+                          "Ver imagem",
+                          style: TextStyle(color: Colors.blue),
+                        ),
                       )
                     else
-                      FittedBox(
-                        child: InkWell(
-                          onTap: () {
-                            _showImagePopup();
-                          },
-                          child: const Text('Ver imagem anexada'),
-                        ),
+                      const Text(
+                        "Nenhuma imagem selecionada",
+                        style: TextStyle(color: Colors.grey),
                       ),
                   ],
                 ),
-                SizedBox(
-                  height: avaliableHeight * 0.05,
-                ),
-                Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text("Data de recebimento")),
-                Container(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _updateDate();
-                              });
-                            },
-                            child: const Text("Hoje"),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              _showDatePicker();
-                            },
-                            child: const Text("Passado"),
-                          ),
-                        ],
-                      ),
-                      FittedBox(
-                          child: Text(
-                        (_selectedDate.year == DateTime.now().year &&
-                                _selectedDate.month == DateTime.now().month &&
-                                _selectedDate.day == DateTime.now().day)
-                            ? 'Hoje'
-                            : 'Data Selecionada: ${DateFormat('d/MMM/y', 'pt_BR').format(_selectedDate)}',
-                        style: const TextStyle(fontSize: 12),
-                        textAlign: TextAlign.center,
-                      )),
-                    ],
-                  ),
-                ),
-                const Spacer(),
+                SizedBox(height: avaliableHeight * 0.05),
+                Spacer(),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Expanded(
                       child: ElevatedButton(
                         onPressed: _submitForm,
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue),
-                        child: const Text(
-                          "Nova transação",
-                          style: TextStyle(fontSize: 15, color: Colors.white),
-                        ),
+                        child: const Text("Adicionar"),
                       ),
                     ),
                   ],

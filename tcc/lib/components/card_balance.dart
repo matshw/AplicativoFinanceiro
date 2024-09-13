@@ -103,7 +103,6 @@ class _CardBalanceState extends State<CardBalance> {
               var data = snapshot.data?.data();
 
               if (data == null) {
-                // Handle the case where the data is null
                 return const Center(child: Text('Nenhum dado disponível'));
               }
 

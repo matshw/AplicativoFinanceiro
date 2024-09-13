@@ -28,6 +28,7 @@ class FirestoreService {
     double valor,
     DateTime data,
     String? imagem,
+    String meioPagamento,
   ) async {
     try {
       await _firestore
@@ -41,6 +42,7 @@ class FirestoreService {
         'valor': valor,
         'data': data,
         'imagem': imagem ?? '',
+        'meioPagamento': meioPagamento,
       });
     } catch (e) {
       print("Erro ao adicionar transação: $e");
@@ -49,18 +51,28 @@ class FirestoreService {
 
   Future<void> updateInfo(
     String uid,
-    double gastoValue,
+    double valor,
     double saldoValue,
+    String tipo,
   ) async {
     try {
       DocumentSnapshot doc =
           await _firestore.collection('users').doc(uid).get();
+      double currentGanhoValue = doc['ganhoValue'] ?? 0.0;
       double currentGastoValue = doc['gastoValue'] ?? 0.0;
       double currentSaldoValue = doc['saldoValue'] ?? 0.0;
-      await _firestore.collection('users').doc(uid).set({
-        'gastoValue': currentGastoValue + gastoValue,
-        'saldoValue': currentSaldoValue + saldoValue,
-      }, SetOptions(merge: true));
+
+      if (tipo == 'ganho') {
+        await _firestore.collection('users').doc(uid).update({
+          'ganhoValue': currentGanhoValue + valor,
+          'saldoValue': currentSaldoValue + saldoValue,
+        });
+      } else if (tipo == 'gasto') {
+        await _firestore.collection('users').doc(uid).update({
+          'gastoValue': currentGastoValue + valor,
+          'saldoValue': currentSaldoValue + saldoValue,
+        });
+      }
     } catch (e) {
       print("Erro ao atualizar informações: $e");
     }
@@ -83,11 +95,18 @@ class FirestoreService {
     }
   }
 
-  Stream<QuerySnapshot> getTransactionsStream(String uid) {
-    return _firestore
+  Stream<QuerySnapshot> getFutureTransactionsStream(String uid) {
+    DateTime now = DateTime.now();
+    DateTime startOfMonth = DateTime(now.year, now.month, 1);
+    DateTime endOfMonth = DateTime(now.year, now.month + 1, 0);
+
+    return FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .collection('transacao')
+        .where('data', isGreaterThanOrEqualTo: startOfMonth)
+        .where('data', isLessThanOrEqualTo: endOfMonth)
+        .where('tipo', isEqualTo: 'futura')
         .orderBy('data', descending: true)
         .snapshots();
   }
@@ -139,8 +158,8 @@ class FirestoreService {
     }
   }
 
-  Future<void> removeTransacao(
-      String uid, String docID, double valor, String tipo) async {
+  Future<void> removeTransacao(String uid, String docID, double valor,
+      String tipo, DateTime data) async {
     await _firestore
         .collection('users')
         .doc(uid)
@@ -148,16 +167,20 @@ class FirestoreService {
         .doc(docID)
         .delete();
 
-    if (tipo == 'ganho') {
-      await _firestore.collection('users').doc(uid).update({
-        'saldoValue': FieldValue.increment(-valor),
-        'ganhoValue': FieldValue.increment(-valor)
-      });
-    } else if (tipo == 'gasto') {
-      await _firestore.collection('users').doc(uid).update({
-        'saldoValue': FieldValue.increment(valor),
-        'gastoValue': FieldValue.increment(-valor)
-      });
+    bool isFutureTransaction = data.isAfter(DateTime.now());
+
+    if (!isFutureTransaction) {
+      if (tipo == 'ganho') {
+        await _firestore.collection('users').doc(uid).update({
+          'saldoValue': FieldValue.increment(-valor),
+          'ganhoValue': FieldValue.increment(-valor)
+        });
+      } else if (tipo == 'gasto') {
+        await _firestore.collection('users').doc(uid).update({
+          'saldoValue': FieldValue.increment(valor),
+          'gastoValue': FieldValue.increment(-valor)
+        });
+      }
     }
   }
 }
@@ -173,6 +196,19 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
   String? _selectedCategory;
   String? _selectedPayment;
   String? imagem;
+  FaIcon defaultIcon = FaIcon(FontAwesomeIcons.question);
+
+  bool isParcelado = false; // Controla o estado do switch parcelado
+  int? _selectedParcelas; // Armazena a quantidade de parcelas selecionada
+  Stream<QuerySnapshot> _getFutureTransactionsStream() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return Stream.empty();
+    }
+
+    // Garanta que o Stream é criado apenas uma vez e não dentro do `setState`
+    return _firestoreService.getFutureTransactionsStream(user.uid);
+  }
 
   Future<void> _loadInfo() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -191,6 +227,42 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
     _loadInfo();
   }
 
+  void _processarTransacoesFuturas() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    _getFutureTransactionsStream().listen((snapshot) {
+      for (var doc in snapshot.docs) {
+        var data = doc['data'].toDate();
+        var tipo = doc['tipo'];
+        var valor = doc['valor'];
+        var descricao = doc['descricao'];
+
+        // Verifica se a transação já foi processada
+        if (tipo == 'futura' &&
+            (data.isBefore(DateTime.now()) ||
+                data.isAtSameMomentAs(DateTime.now()))) {
+          // Converte a transação futura em uma transação efetiva
+          _firestoreService.updateTransacao(
+            user.uid,
+            doc.id,
+            descricao,
+            valor,
+            "gasto", // Agora é um gasto efetivo
+          );
+
+          // Atualiza o saldo do usuário
+          _firestoreService.updateInfo(
+            user.uid,
+            valor,
+            -valor,
+            'gasto',
+          );
+        }
+      }
+    });
+  }
+
   void _submitFormGasto() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -200,24 +272,75 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
 
     final description = _descricaoController.text;
     final category = _selectedCategory;
+    final meioPagamento = _selectedPayment;
     final value = double.tryParse(_valorController.text) ?? 0.0;
 
-    if (description.isEmpty || value <= 0 || category == null) {
+    if (description.isEmpty ||
+        value <= 0 ||
+        category == null ||
+        meioPagamento == null) {
       _showError("Preencha todos os campos.");
       return;
     }
 
-    double newSaldoValue = -value;
-    double newGastoValue = value;
+    bool isFutureTransaction = _selectedDate.isAfter(DateTime.now());
+
     try {
-      await _firestoreService.addTransacao(user.uid, description, category,
-          "gasto", value, _selectedDate, imagem);
-      await _firestoreService.updateInfo(
-          user.uid, newGastoValue, newSaldoValue);
-      widget.balanceNotifier.value = {
-        'gastoValue': gastoValue,
-        'saldoValue': saldoValue
-      };
+      if (isParcelado && _selectedParcelas != null && _selectedParcelas! > 1) {
+        // Caso seja parcelado, dividimos o valor total pelo número de parcelas
+        double parcelaValue = value / _selectedParcelas!;
+        DateTime currentDate = _selectedDate;
+
+        for (int i = 0; i < _selectedParcelas!; i++) {
+          // Criando transações futuras para cada parcela
+          await _firestoreService.addTransacao(
+            user.uid,
+            "$description (Parcela ${i + 1}/$_selectedParcelas)",
+            category,
+            "futura", // Marcamos como futura
+            parcelaValue,
+            currentDate,
+            imagem,
+            meioPagamento,
+          );
+
+          // Incrementa a data para o próximo mês
+          currentDate = DateTime(
+              currentDate.year, currentDate.month + 1, currentDate.day);
+        }
+      } else {
+        // Caso não seja parcelado, trata como uma transação normal
+        await _firestoreService.addTransacao(
+          user.uid,
+          description,
+          category,
+          isFutureTransaction ? "futura" : "gasto", // Aqui definimos o tipo
+          value,
+          _selectedDate,
+          imagem,
+          meioPagamento,
+        );
+
+        if (!isFutureTransaction) {
+          await _firestoreService.updateInfo(
+            user.uid,
+            value,
+            -value,
+            'gasto',
+          );
+
+          setState(() {
+            gastoValue += value;
+            saldoValue -= value;
+          });
+
+          widget.balanceNotifier.value = {
+            'gastoValue': gastoValue,
+            'saldoValue': saldoValue,
+          };
+        }
+      }
+
       Navigator.of(context).pop();
     } catch (e) {
       _showError("Erro ao adicionar transação.");
@@ -244,6 +367,15 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
     );
   }
 
+  final Map<String, FaIcon> _paymentMethods = {
+    "Dinheiro": const FaIcon(FontAwesomeIcons.moneyBill),
+    "Cartão de Crédito": const FaIcon(FontAwesomeIcons.ccVisa),
+    "Cartão de Débito": const FaIcon(FontAwesomeIcons.ccMastercard),
+    "Transferência Bancária": const FaIcon(FontAwesomeIcons.moneyBillTransfer),
+    "Pix": const FaIcon(FontAwesomeIcons.pix),
+    "Boleto": const FaIcon(FontAwesomeIcons.file),
+  };
+
   final Map<String, FaIcon> _categories = {
     'Comida': const FaIcon(FontAwesomeIcons.burger),
     'Roupas': const FaIcon(FontAwesomeIcons.shirt),
@@ -260,32 +392,6 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
     'Tecnologia': const FaIcon(FontAwesomeIcons.laptop),
     'Outros': const FaIcon(FontAwesomeIcons.circleQuestion),
   };
-
-  void _chipSelection(String category) {
-    setState(() {
-      _selectedCategory = category;
-    });
-  }
-
-  Widget _createChip(String category, FaIcon icon) {
-    return ChoiceChip(
-      shape: RoundedRectangleBorder(
-          side: const BorderSide(
-            color: Colors.blue,
-          ),
-          borderRadius: BorderRadius.circular(8.0)),
-      selected: _selectedCategory == category,
-      avatar: icon,
-      label: FittedBox(child: Text(category)),
-      backgroundColor: const Color.fromRGBO(178, 219, 255, 1),
-      selectedColor: Colors.blue,
-      onSelected: (selected) {
-        if (selected) {
-          _chipSelection(category);
-        }
-      },
-    );
-  }
 
   void _selectImage() async {
     ImagePicker imagePicker = ImagePicker();
@@ -343,6 +449,7 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
   void _showDatePicker() {
     showDatePicker(
             context: context,
+            initialDate: DateTime.now(),
             firstDate: DateTime.now(),
             lastDate: DateTime(2100),
             locale: const Locale('pt', 'BR'))
@@ -381,9 +488,9 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
         title: const Text("Adicionar gasto"),
         backgroundColor: Colors.blue,
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0),
-        child: SingleChildScrollView(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0),
           child: Container(
             padding: EdgeInsets.only(top: avaliableHeight * 0.025),
             height: avaliableHeight,
@@ -395,37 +502,8 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
                 ),
                 TextField(
                   controller: _descricaoController,
-                  onSubmitted: (value) => _submitFormGasto(),
                   decoration: InputDecoration(
                       labelText: "Descrição",
-                      fillColor: Colors.grey.shade200,
-                      filled: true,
-                      enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: const BorderSide(
-                            color: Colors.blue,
-                            width: 1.0,
-                          )),
-                      focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: const BorderSide(
-                            color: Colors.blue,
-                            width: 2.0,
-                          ))),
-                ),
-                SizedBox(
-                  height: avaliableWidth * 0.03,
-                ),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text("Valor (R\$)"),
-                ),
-                TextField(
-                  controller: _valorController,
-                  onSubmitted: (value) => _submitFormGasto(),
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                      labelText: "Valor R\$",
                       fillColor: Colors.grey.shade200,
                       filled: true,
                       enabledBorder: OutlineInputBorder(
@@ -446,18 +524,92 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
                 ),
                 const Align(
                   alignment: Alignment.centerLeft,
-                  child: Text("Categoria"),
+                  child: Text("Valor (R\$)"),
                 ),
-                Wrap(
-                  spacing: 5.0,
-                  children: _categories.entries.map((entry) {
-                    return FractionallySizedBox(
-                        widthFactor: 1 / 3.5,
-                        child: _createChip(entry.key, entry.value));
-                  }).toList(),
+                TextField(
+                  controller: _valorController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                      labelText: "Valor R\$",
+                      fillColor: Colors.grey.shade200,
+                      filled: true,
+                      enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                          borderSide: const BorderSide(
+                            color: Colors.blue,
+                            width: 1.0,
+                          )),
+                      focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                          borderSide: const BorderSide(
+                            color: Colors.blue,
+                            width: 2.0,
+                          ))),
                 ),
                 SizedBox(
-                  height: avaliableHeight * 0.02,
+                  height: avaliableHeight * 0.05,
+                ),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Categoria"),
+                ),
+                Align(
+                  alignment: Alignment.center,
+                  child: DropdownButton<String>(
+                    hint: const Text("Selecione uma categoria"),
+                    value: _selectedCategory,
+                    items: _categories.keys.map((String key) {
+                      return DropdownMenuItem<String>(
+                        value: key,
+                        child: Row(
+                          children: [
+                            _categories[key]!,
+                            const SizedBox(width: 10),
+                            Text(key),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (String? value) {
+                      setState(() {
+                        _selectedCategory = value;
+                      });
+                    },
+                  ),
+                ),
+                SizedBox(
+                  height: avaliableHeight * 0.05,
+                ),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Meio de pagamento"),
+                ),
+                Align(
+                  alignment: Alignment.center,
+                  child: DropdownButton<String>(
+                    hint: const Text("Selecione um meio de pagamento"),
+                    value: _selectedPayment,
+                    items: _paymentMethods.keys.map((String key) {
+                      return DropdownMenuItem<String>(
+                        value: key,
+                        child: Row(
+                          children: [
+                            _paymentMethods[key] ?? defaultIcon,
+                            const SizedBox(width: 10),
+                            Text(key),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (String? value) {
+                      setState(() {
+                        _selectedPayment = value;
+                      });
+                    },
+                  ),
+                ),
+                SizedBox(
+                  height: avaliableHeight * 0.05,
                 ),
                 const Align(
                   alignment: Alignment.centerLeft,
@@ -491,6 +643,54 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
                     ),
                   ],
                 ),
+                SizedBox(
+                  height: avaliableHeight * 0.05,
+                ),
+                // Novo widget de Parcelado
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Parcelado"),
+                    Switch(
+                      value: isParcelado,
+                      onChanged: (bool newValue) {
+                        setState(() {
+                          isParcelado = newValue;
+                          if (!isParcelado) {
+                            _selectedParcelas =
+                                null; // Resetar quando desligado
+                          }
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                // Exibir dropdown de parcelas somente se parcelado for ativado
+                if (isParcelado)
+                  Column(
+                    children: [
+                      const Text("Selecione o número de parcelas"),
+                      DropdownButton<int>(
+                        hint: const Text("Parcelas"),
+                        value: _selectedParcelas,
+                        items: List<int>.generate(12, (i) => i + 1)
+                            .map((int value) {
+                          return DropdownMenuItem<int>(
+                            value: value,
+                            child: Text("$value"),
+                          );
+                        }).toList(),
+                        onChanged: (int? newValue) {
+                          setState(() {
+                            _selectedParcelas = newValue;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                SizedBox(
+                  height: avaliableHeight * 0.05,
+                ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -523,29 +723,29 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
                       ),
                   ],
                 ),
-                SizedBox(
-                  height: avaliableHeight * 0.02,
-                ),
-                const Spacer(),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _submitFormGasto,
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue),
-                        child: const Text(
-                          "Nova transação",
-                          style: TextStyle(fontSize: 15, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: Container(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          bottom: mediaQuery.viewInsets.bottom + 20,
+        ),
+        child: ElevatedButton(
+          onPressed: _submitFormGasto,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            padding: EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: const Text(
+            "Nova transação",
+            style: TextStyle(fontSize: 18, color: Colors.white),
           ),
         ),
       ),

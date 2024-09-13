@@ -80,9 +80,10 @@ class _ScreenRegisterState extends State<ScreenRegister> {
               ),
               ElevatedButton(onPressed: signUp, child: Text("Registrar-se")),
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text("Já tem uma conta?"),
-                  TextButton(onPressed: () {}, child: Text("Login"))
+                  TextButton(onPressed: () {Navigator.pushNamed(context, '/');}, child: Text("Login"))
                 ],
               )
             ],
@@ -99,7 +100,6 @@ class _ScreenRegisterState extends State<ScreenRegister> {
     User? user = await _auth.signUpWithEmailAndPassword(email, password);
 
     if (user != null) {
-      
       Navigator.pushNamed(context, "/");
     } else {
       print("Houve um erro");

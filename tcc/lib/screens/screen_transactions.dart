@@ -22,6 +22,8 @@ class FirestoreService {
     String descricao,
     double valor,
     String tipo,
+    String? categoria,
+    DateTime date,
   ) async {
     double difference = 0.0;
 
@@ -44,6 +46,8 @@ class FirestoreService {
         .update({
       'descricao': descricao,
       'valor': valor,
+      'categoria': categoria,
+      'data': date,
     });
 
     if (tipo == 'ganho') {
@@ -107,6 +111,247 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   TextEditingController _searchController = TextEditingController();
   List<DocumentSnapshot> _filteredTransactions = [];
   String _selectedFilter = 'Nenhum';
+
+  void _showActionSheet(DocumentSnapshot document) {
+    final data = document.data() as Map<String, dynamic>;
+    final descricao = data['descricao'];
+    final valor = data['valor'];
+    final tipo = data['tipo'];
+    final categoria = data['categoria'];
+    final dateTimestamp = data['data'];
+    final date = dateTimestamp.toDate();
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.edit),
+              title: Text('Editar'),
+              onTap: () {
+                Navigator.pop(context);
+                _showEditDialog(document);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete),
+              title: Text('Remover'),
+              onTap: () {
+                Navigator.pop(context);
+                _removeTransacao(document.id, valor, tipo);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.cancel),
+              title: Text('Cancelar'),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditDialog(DocumentSnapshot document) {
+    final data = document.data() as Map<String, dynamic>;
+    final descricao = data['descricao'];
+    final valor = data['valor'].toString();
+    final tipo = data['tipo'];
+    final categoria = data['categoria'];
+    final dateTimestamp = data['data'];
+    final date = dateTimestamp.toDate();
+
+    TextEditingController descricaoController =
+        TextEditingController(text: descricao);
+    TextEditingController valorController = TextEditingController(text: valor);
+    String? _selectedCategory = categoria;
+    DateTime _selectedDate = date;
+
+    final Map<String, FaIcon> _gainCategories = {
+      'Salário': const FaIcon(FontAwesomeIcons.sackDollar),
+      'Freelance': const FaIcon(FontAwesomeIcons.briefcase),
+      'Venda': const FaIcon(FontAwesomeIcons.circleDollarToSlot),
+      'Comissão': const FaIcon(FontAwesomeIcons.handHoldingDollar),
+      'Presente': const FaIcon(FontAwesomeIcons.gift),
+      'Consultoria': const FaIcon(FontAwesomeIcons.magnifyingGlassDollar),
+      'Outros': const FaIcon(FontAwesomeIcons.circleQuestion),
+    };
+
+    final Map<String, FaIcon> _expenseCategories = {
+      'Comida': const FaIcon(FontAwesomeIcons.burger),
+      'Roupas': const FaIcon(FontAwesomeIcons.shirt),
+      'Lazer': const FaIcon(FontAwesomeIcons.futbol),
+      'Transporte': const FaIcon(FontAwesomeIcons.bicycle),
+      'Saúde': const FaIcon(FontAwesomeIcons.suitcaseMedical),
+      'Presentes': const FaIcon(FontAwesomeIcons.gift),
+      'Educação': const FaIcon(FontAwesomeIcons.book),
+      'Beleza': const FaIcon(FontAwesomeIcons.paintbrush),
+      'Emergência': const FaIcon(FontAwesomeIcons.hospital),
+      'Reparos': const FaIcon(FontAwesomeIcons.hammer),
+      'Streaming': const FaIcon(FontAwesomeIcons.tv),
+      'Serviços': const FaIcon(FontAwesomeIcons.clipboard),
+      'Tecnologia': const FaIcon(FontAwesomeIcons.laptop),
+      'Outros': const FaIcon(FontAwesomeIcons.circleQuestion),
+    };
+
+    void _showDatePicker(StateSetter setState) {
+      showDatePicker(
+        context: context,
+        firstDate: DateTime(2020),
+        lastDate: DateTime.now(),
+        initialDate: _selectedDate,
+        locale: const Locale('pt', 'BR'),
+      ).then((pickedDate) {
+        if (pickedDate != null && pickedDate != _selectedDate) {
+          setState(() {
+            _selectedDate = pickedDate;
+          });
+        }
+      });
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Editar Transação'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: descricaoController,
+                    decoration: const InputDecoration(labelText: 'Descrição'),
+                  ),
+                  TextField(
+                    controller: valorController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Valor'),
+                  ),
+                  const SizedBox(height: 20),
+                  if (tipo == 'ganho')
+                    FittedBox(
+                      child: DropdownButton<String>(
+                        value: _selectedCategory,
+                        hint: const Text("Selecione uma categoria de ganho"),
+                        items: _gainCategories.keys.map((String category) {
+                          return DropdownMenuItem<String>(
+                            value: category,
+                            child: Row(
+                              children: [
+                                _gainCategories[category]!,
+                                const SizedBox(width: 8),
+                                Text(category),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (String? value) {
+                          setState(() {
+                            _selectedCategory = value;
+                          });
+                        },
+                      ),
+                    ),
+                  if (tipo == 'gasto')
+                    FittedBox(
+                      child: DropdownButton<String>(
+                        value: _selectedCategory,
+                        hint: const Text("Selecione uma categoria de gasto"),
+                        items: _expenseCategories.keys.map((String category) {
+                          return DropdownMenuItem<String>(
+                            value: category,
+                            child: Row(
+                              children: [
+                                _expenseCategories[category]!,
+                                const SizedBox(width: 8),
+                                Text(category),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedCategory = value;
+                          });
+                        },
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "Data: ${DateFormat('dd/MM/yyyy').format(_selectedDate)}",
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.calendar_today),
+                        onPressed: () {
+                          _showDatePicker(setState);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _updateTransacao(
+                  document.id,
+                  descricaoController.text,
+                  double.parse(valorController.text),
+                  tipo,
+                  _selectedCategory,
+                  _selectedDate,
+                );
+              },
+              child: const Text('Salvar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _updateTransacao(String docID, String descricao, double valor,
+      String tipo, String? categoria, DateTime date) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    FirestoreService firestoreService = FirestoreService();
+    firestoreService
+        .updateTransacao(
+            user.uid, docID, descricao, valor, tipo, categoria, date)
+        .then((_) {
+      setState(() {});
+    }).catchError((error) {});
+  }
+
+  void _removeTransacao(String docID, double valor, String tipo) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    FirestoreService firestoreService = FirestoreService();
+    firestoreService.removeTransacao(user.uid, docID, valor, tipo).then((_) {
+      setState(() {});
+    }).catchError((error) {});
+  }
 
   final Map<String, FaIcon> _categories = {
     'Salário': const FaIcon(FontAwesomeIcons.sackDollar),
@@ -325,6 +570,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8.0),
                         child: ListTile(
+                          onTap: () {
+                            _showActionSheet(document);
+                          },
                           leading: categoryIcon,
                           title: Text(
                             categoria,

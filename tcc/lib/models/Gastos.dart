@@ -5,12 +5,12 @@ class Gastos {
   final DateTime dataPagamento;
   final String categoria;
   final String imagem;
-  final String modoPagamento;
+  final String meioPagamento;
 
   Gastos(
     this.categoria,
     this.imagem,
-    this.modoPagamento, {
+    this.meioPagamento, {
     required this.id,
     required this.descricao,
     required this.dataPagamento,

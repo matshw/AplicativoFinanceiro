@@ -7,6 +7,7 @@ class Ganhos {
   final String categoria;
   final String imagem;
 
+
   Ganhos({
     required this.imagem,
     required this.id,
