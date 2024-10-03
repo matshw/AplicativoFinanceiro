@@ -263,93 +263,104 @@ class TransactionList extends StatelessWidget {
         mediaQuery.padding.bottom;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 165, 226, 245),
-        border: Border.all(
-          color: const Color.fromARGB(255, 165, 226, 245),
-          width: 1,
-        ),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      height: availableHeight * 0.28,
-      child: StreamBuilder<QuerySnapshot>(
-        stream: firestoreService.getTransactionsStream(user.uid),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          } else if (snapshot.hasError) {
-            print("Erro: ${snapshot.hasError}");
-            return const Center(
-              child: Text("Erro ao carregar dados"),
-            );
-          } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
-              child: Text("Sem itens"),
-            );
-          }
+      margin: EdgeInsets.symmetric(horizontal: 5),
+      child: Card(
+        elevation: 15,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          height: availableHeight * 0.28,
+          child: StreamBuilder<QuerySnapshot>(
+            stream: firestoreService.getTransactionsStream(user.uid),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              } else if (snapshot.hasError) {
+                print("Erro: ${snapshot.hasError}");
+                return const Center(
+                  child: Text("Erro ao carregar dados"),
+                );
+              } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Text("Sem itens"),
+                );
+              }
 
-          List<DocumentSnapshot> transacoesList = snapshot.data!.docs;
+              List<DocumentSnapshot> transacoesList = snapshot.data!.docs;
 
-          return ListView.builder(
-            itemCount: transacoesList.length,
-            itemBuilder: (context, index) {
-              DocumentSnapshot document = transacoesList[index];
-              String docID = document.id;
+              return ListView.builder(
+                itemCount: transacoesList.length,
+                itemBuilder: (context, index) {
+                  DocumentSnapshot document = transacoesList[index];
+                  String docID = document.id;
 
-              Map<String, dynamic> data =
-                  document.data() as Map<String, dynamic>;
-              String transacaoDescricao = data['descricao'];
-              double transacaoValor = data['valor'];
-              String tipo = data['tipo'];
-              Timestamp dateTimestamp = data['data'];
-              DateTime date = dateTimestamp.toDate();
+                  Map<String, dynamic> data =
+                      document.data() as Map<String, dynamic>;
+                  String transacaoDescricao = data['descricao'];
+                  double transacaoValor = data['valor'];
+                  String tipo = data['tipo'];
+                  Timestamp dateTimestamp = data['data'];
+                  DateTime date = dateTimestamp.toDate();
 
-              return InkWell(
-                onTap: () {
-                  _showChoiceDialog(
-                      context: context,
-                      uid: user.uid,
-                      docID: docID,
-                      valor: transacaoValor,
-                      tipo: tipo,
-                      descricao: transacaoDescricao);
-                },
-                child: ListTile(
-                  title: Text(
-                    DateFormat.yMMMMEEEEd('pt_BR').format(date),
-                    style: const TextStyle(fontSize: 15),
-                  ),
-                  subtitle: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      FittedBox(
-                        child: Text(
-                          tipo == 'ganho'
-                              ? "R\$ ${transacaoValor.toStringAsFixed(2)}"
-                              : "R\$ -${transacaoValor.toStringAsFixed(2)}",
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: tipo == 'ganho' ? Colors.green : Colors.red,
+                  return InkWell(
+                    onTap: () {
+                      _showChoiceDialog(
+                          context: context,
+                          uid: user.uid,
+                          docID: docID,
+                          valor: transacaoValor,
+                          tipo: tipo,
+                          descricao: transacaoDescricao);
+                    },
+                    child: ListTile(
+                      title: Text(
+                        DateFormat.yMMMMEEEEd('pt_BR').format(date),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Color.fromARGB(228, 255, 255, 255),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          FittedBox(
+                            child: Text(
+                              tipo == 'ganho'
+                                  ? "R\$ ${transacaoValor.toStringAsFixed(2)}"
+                                  : "R\$ -${transacaoValor.toStringAsFixed(2)}",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: tipo == 'ganho'
+                                    ? Color.fromARGB(255, 90, 204, 94)
+                                    : Color.fromARGB(255, 244, 111, 101),
+                              ),
+                            ),
                           ),
-                        ),
+                          Text(
+                            transacaoDescricao,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18,
+                              color: tipo == 'ganho'
+                                  ? Color.fromARGB(255, 90, 204, 94)
+                                  : Color.fromARGB(255, 244, 111, 101),
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        transacaoDescricao,
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: tipo == 'ganho' ? Colors.green : Colors.red,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               );
             },
-          );
-        },
+          ),
+        ),
       ),
     );
   }

@@ -116,6 +116,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final data = document.data() as Map<String, dynamic>;
     final descricao = data['descricao'];
     final valor = data['valor'];
+    final String? imagem = data['imagem'];
+
     final tipo = data['tipo'];
     final categoria = data['categoria'];
     final dateTimestamp = data['data'];
@@ -149,6 +151,35 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               onTap: () {
                 Navigator.pop(context);
               },
+            ),
+            if (imagem != null && imagem.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.image),
+                title: const Text('Ver imagem'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showImageDialog(context, imagem);
+                },
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showImageDialog(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Imagem anexada"),
+          content: Image.network(imageUrl),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text("Fechar"),
             ),
           ],
         );
@@ -354,26 +385,86 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   final Map<String, FaIcon> _categories = {
-    'Salário': const FaIcon(FontAwesomeIcons.sackDollar),
-    'Freelance': const FaIcon(FontAwesomeIcons.briefcase),
-    'Venda': const FaIcon(FontAwesomeIcons.circleDollarToSlot),
-    'Comissão': const FaIcon(FontAwesomeIcons.handHoldingDollar),
-    'Presente': const FaIcon(FontAwesomeIcons.gift),
-    'Consultoria': const FaIcon(FontAwesomeIcons.magnifyingGlassDollar),
-    'Outros': const FaIcon(FontAwesomeIcons.circleQuestion),
-    'Comida': const FaIcon(FontAwesomeIcons.burger),
-    'Roupas': const FaIcon(FontAwesomeIcons.shirt),
-    'Lazer': const FaIcon(FontAwesomeIcons.futbol),
-    'Transporte': const FaIcon(FontAwesomeIcons.bicycle),
-    'Saúde': const FaIcon(FontAwesomeIcons.suitcaseMedical),
-    'Presentes': const FaIcon(FontAwesomeIcons.gift),
-    'Educação': const FaIcon(FontAwesomeIcons.book),
-    'Beleza': const FaIcon(FontAwesomeIcons.paintbrush),
-    'Emergência': const FaIcon(FontAwesomeIcons.hospital),
-    'Reparos': const FaIcon(FontAwesomeIcons.hammer),
-    'Streaming': const FaIcon(FontAwesomeIcons.tv),
-    'Serviços': const FaIcon(FontAwesomeIcons.clipboard),
-    'Tecnologia': const FaIcon(FontAwesomeIcons.laptop),
+    'Salário': const FaIcon(
+      FontAwesomeIcons.sackDollar,
+      color: Colors.white54,
+    ),
+    'Freelance': const FaIcon(
+      FontAwesomeIcons.briefcase,
+      color: Colors.white54,
+    ),
+    'Venda': const FaIcon(
+      FontAwesomeIcons.circleDollarToSlot,
+      color: Colors.white54,
+    ),
+    'Comissão': const FaIcon(
+      FontAwesomeIcons.handHoldingDollar,
+      color: Colors.white54,
+    ),
+    'Presente': const FaIcon(
+      FontAwesomeIcons.gift,
+      color: Colors.white54,
+    ),
+    'Consultoria': const FaIcon(
+      FontAwesomeIcons.magnifyingGlassDollar,
+      color: Colors.white54,
+    ),
+    'Outros': const FaIcon(
+      FontAwesomeIcons.circleQuestion,
+      color: Colors.white54,
+    ),
+    'Comida': const FaIcon(
+      FontAwesomeIcons.burger,
+      color: Colors.white54,
+    ),
+    'Roupas': const FaIcon(
+      FontAwesomeIcons.shirt,
+      color: Colors.white54,
+    ),
+    'Lazer': const FaIcon(
+      FontAwesomeIcons.futbol,
+      color: Colors.white54,
+    ),
+    'Transporte': const FaIcon(
+      FontAwesomeIcons.bicycle,
+      color: Colors.white54,
+    ),
+    'Saúde': const FaIcon(
+      FontAwesomeIcons.suitcaseMedical,
+      color: Colors.white54,
+    ),
+    'Presentes': const FaIcon(
+      FontAwesomeIcons.gift,
+      color: Colors.white54,
+    ),
+    'Educação': const FaIcon(
+      FontAwesomeIcons.book,
+      color: Colors.white54,
+    ),
+    'Beleza': const FaIcon(
+      FontAwesomeIcons.paintbrush,
+      color: Colors.white54,
+    ),
+    'Emergência': const FaIcon(
+      FontAwesomeIcons.hospital,
+      color: Colors.white54,
+    ),
+    'Reparos': const FaIcon(
+      FontAwesomeIcons.hammer,
+      color: Colors.white54,
+    ),
+    'Streaming': const FaIcon(
+      FontAwesomeIcons.tv,
+      color: Colors.white54,
+    ),
+    'Serviços': const FaIcon(
+      FontAwesomeIcons.clipboard,
+      color: Colors.white54,
+    ),
+    'Tecnologia': const FaIcon(
+      FontAwesomeIcons.laptop,
+      color: Colors.white54,
+    ),
   };
 
   @override
@@ -475,38 +566,57 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         mediaQuery.padding.bottom;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.primary,
       body: SingleChildScrollView(
         child: Column(
           children: [
             SizedBox(
               width: mediaQuery.size.width * 0.95,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: Colors.grey.shade300,
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                            borderSide: BorderSide.none),
-                        hintText: "Buscar transação",
-                        prefixIcon: Icon(Icons.search),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 6),
-                        prefixIconColor:
-                            const Color.fromARGB(255, 101, 177, 240),
+              child: Container(
+                padding: EdgeInsets.only(top: 10),
+                // decoration: BoxDecoration(
+                //   border: Border(
+                //     bottom: BorderSide(
+                //       color: Colors.grey.shade500,
+                //       width: 1.0,
+                //     ),
+                //   ),
+                // ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 15),
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.grey.shade300,
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                                borderSide: BorderSide.none),
+                            hintText: "Buscar transação",
+                            prefixIcon: Icon(Icons.search),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 6),
+                            prefixIconColor:
+                                Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  SizedBox(
-                    width: 8.0,
-                  ),
-                  IconButton(
-                    onPressed: _showFilterOptions,
-                    icon: Icon(Icons.filter_list),
-                  ),
-                ],
+                    SizedBox(
+                      width: 8.0,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 15),
+                      child: IconButton(
+                        onPressed: _showFilterOptions,
+                        icon: Icon(Icons.filter_list),
+                        color: Colors.grey.shade300,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             SizedBox(
@@ -531,7 +641,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     );
                   }
 
-                  List<DocumentSnapshot> transacoesList = snapshot.data!.docs;
+                  List<DocumentSnapshot> transacoesList =
+                      snapshot.data!.docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final tipo = data['tipo'];
+                    return tipo != 'futura';
+                  }).toList();
 
                   if (_searchController.text.isNotEmpty) {
                     _filteredTransactions = transacoesList.where((doc) {
@@ -567,8 +682,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         categoryIcon = const FaIcon(FontAwesomeIcons.question);
                       }
 
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      return Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
                         child: ListTile(
                           onTap: () {
                             _showActionSheet(document);
@@ -577,19 +692,23 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           title: Text(
                             categoria,
                             style: const TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.bold),
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                color: Color.fromARGB(255, 255, 255, 255)),
                           ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 transacaoDescricao,
-                                style: const TextStyle(fontSize: 14),
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    color: Color.fromARGB(241, 255, 255, 255)),
                               ),
                               Text(
                                 DateFormat.yMMMMEEEEd('pt_BR').format(date),
-                                style: const TextStyle(
-                                    fontSize: 12, color: Colors.grey),
+                                style: TextStyle(
+                                    fontSize: 14, color: Colors.grey.shade300),
                               ),
                             ],
                           ),
@@ -599,8 +718,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                 : "R\$ -${transacaoValor.toStringAsFixed(2)}",
                             style: TextStyle(
                               fontSize: 18,
-                              color:
-                                  tipo == 'ganho' ? Colors.green : Colors.red,
+                              color: tipo == 'ganho'
+                                  ? Color.fromARGB(255, 90, 204, 94)
+                                  : Color.fromARGB(255, 247, 88, 77),
                             ),
                           ),
                         ),

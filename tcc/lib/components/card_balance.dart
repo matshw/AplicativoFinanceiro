@@ -80,150 +80,119 @@ class _CardBalanceState extends State<CardBalance> {
     }
 
     final mediaQuery = MediaQuery.of(context);
-    final avaliableHeight = mediaQuery.size.height -
+    final availableHeight = mediaQuery.size.height -
         mediaQuery.padding.top -
         mediaQuery.padding.bottom;
 
     return Container(
-      height: avaliableHeight * 0.27,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          color: const Color.fromARGB(255, 165, 226, 245),
+      height: availableHeight * 0.27,
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+      child: Card(
+        elevation: 15,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
         ),
-        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: _firestoreService.getSaldoStream(user.uid),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return const Center(child: Text('Erro ao carregar dados'));
-            } else if (snapshot.hasData) {
-              var data = snapshot.data?.data();
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: _firestoreService.getSaldoStream(user.uid),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              } else if (snapshot.hasError) {
+                return const Center(child: Text('Erro ao carregar dados'));
+              } else if (snapshot.hasData) {
+                var data = snapshot.data?.data();
 
-              if (data == null) {
-                return const Center(child: Text('Nenhum dado disponível'));
-              }
+                if (data == null) {
+                  return const Center(child: Text('Nenhum dado disponível'));
+                }
 
-              double ganhoValue = data['ganhoValue'] ?? 0.0;
-              double saldoValue = data['saldoValue'] ?? 0.0;
-              double gastoValue = data['gastoValue'] ?? 0.0;
+                double ganhoValue = data['ganhoValue'] ?? 0.0;
+                double saldoValue = data['saldoValue'] ?? 0.0;
+                double gastoValue = data['gastoValue'] ?? 0.0;
 
-              return Padding(
-                padding: const EdgeInsets.only(
-                    bottom: 30.0, left: 10.0, right: 10.0, top: 5.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.bottomLeft,
-                        child: Row(
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Stack(
+                    children: [
+                      Align(
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
                           children: [
-                            const Icon(
-                              Icons.arrow_upward_rounded,
-                              color: Colors.green,
+                            const Text(
+                              "Saldo atual",
+                              style: TextStyle(
+                                  fontSize: 20,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const FittedBox(
-                                    child: Text(
-                                      "Ganho",
-                                      style: TextStyle(
-                                          color: Colors.green, fontSize: 18),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  FittedBox(
-                                    child: Text(
-                                      "R\$ ${ganhoValue.toStringAsFixed(2)}",
-                                      style: const TextStyle(
-                                        color: Colors.green,
-                                        fontSize: 18,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            Text(
+                              "R\$ ${saldoValue.toStringAsFixed(2)}",
+                              style: const TextStyle(
+                                  fontSize: 24,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          const SizedBox(height: 16),
-                          const FittedBox(
-                            child: Text(
-                              "Saldo atual",
-                              style: TextStyle(fontSize: 18),
+                      Align(
+                        alignment: Alignment.bottomLeft,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              "Ganho",
+                              style: TextStyle(
+                                  color: Color.fromARGB(255, 90, 204, 94),
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold),
                             ),
-                          ),
-                          FittedBox(
-                            child: Text(
-                              "R\$ ${saldoValue.toStringAsFixed(2)}",
-                              style: const TextStyle(fontSize: 18),
+                            Text(
+                              "R\$ ${ganhoValue.toStringAsFixed(2)}",
+                              style: const TextStyle(
+                                  color: Color.fromARGB(255, 90, 204, 94),
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Row(
-                        children: [
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              const FittedBox(
-                                child: Text(
-                                  "Gasto",
-                                  style: TextStyle(
-                                      color: Colors.red, fontSize: 18),
-                                ),
-                              ),
-                              FittedBox(
-                                child: Text(
-                                  "R\$ ${gastoValue.toStringAsFixed(2)}",
-                                  style: const TextStyle(
-                                      color: Colors.red, fontSize: 18),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 8),
-                          const Align(
-                            alignment: Alignment.bottomLeft,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.arrow_downward_rounded,
-                                  color: Colors.red,
-                                ),
-                              ],
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              "Gasto",
+                              style: TextStyle(
+                                  color: Color.fromARGB(255, 244, 111, 101),
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold),
                             ),
-                          ),
-                        ],
+                            Text(
+                              "R\$ ${gastoValue.toStringAsFixed(2)}",
+                              style: const TextStyle(
+                                  color: Color.fromARGB(255, 244, 111, 101),
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            } else {
-              return const Center(child: Text('Nenhum dado disponível'));
-            }
-          },
+                    ],
+                  ),
+                );
+              } else {
+                return const Center(child: Text('Nenhum dado disponível'));
+              }
+            },
+          ),
         ),
       ),
     );

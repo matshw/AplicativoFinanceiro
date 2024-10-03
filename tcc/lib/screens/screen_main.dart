@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:tcc/components/appbar_customized.dart';
 import 'package:tcc/components/card_balance.dart';
+import 'package:tcc/components/transaction_form_cofrinho.dart';
 import 'package:tcc/components/transaction_form_ganho.dart';
 import 'package:tcc/components/transaction_form_gasto.dart';
 import 'package:tcc/components/transaction_list.dart';
@@ -52,6 +53,14 @@ class _ScreenMainState extends State<ScreenMain> {
     };
   }
 
+  void _openTransactionFormModalCofrinho() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => TransactionFormCofrinho(),
+      ),
+    );
+  }
+
   void _openTransactionFormModalGanho() {
     showModalBottomSheet(
       context: context,
@@ -80,8 +89,7 @@ class _ScreenMainState extends State<ScreenMain> {
         mediaQuery.padding.bottom;
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 230, 248, 244),
-      appBar: AppbarCustomized(_openTransactionFormModalGanho),
+      backgroundColor: Theme.of(context).colorScheme.secondary,
       body: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -96,29 +104,37 @@ class _ScreenMainState extends State<ScreenMain> {
               balanceNotifier.value['gastoValue'] ?? 0.0,
             ),
             SizedBox(
-              height: availableHeight * 0.04,
+              height: availableHeight * 0.02,
             ),
             Padding(
               padding: const EdgeInsets.only(left: 10),
               child: Container(
                 alignment: Alignment.topLeft,
                 child: const Text(
-                  "Histórico de transações",
+                  "Histórico de Transações",
                   textAlign: TextAlign.left,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
             const TransactionList(),
             SizedBox(
-              height: availableHeight * 0.01,
+              height: availableHeight * 0.02,
             ),
             Padding(
               padding: const EdgeInsets.only(left: 10),
               child: Container(
                 alignment: Alignment.topLeft,
                 child: const Text(
-                  "Transações pendentes",
+                  "Transações Pendentes",
                   textAlign: TextAlign.left,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
@@ -127,9 +143,9 @@ class _ScreenMainState extends State<ScreenMain> {
         ),
       ),
       floatingActionButton: SpeedDial(
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        icon: FontAwesomeIcons.bars,
-        overlayColor: Colors.black,
+        backgroundColor: Color.fromARGB(255, 59, 66, 72),
+        icon: FontAwesomeIcons.plus,
+        foregroundColor: Colors.white,
         overlayOpacity: 0.4,
         children: [
           SpeedDialChild(
@@ -145,7 +161,14 @@ class _ScreenMainState extends State<ScreenMain> {
             child: const FaIcon(FontAwesomeIcons.arrowDown),
             label: "Gasto",
             onTap: _openTransactionFormModalGasto,
-          )
+          ),
+          SpeedDialChild(
+            shape: const CircleBorder(),
+            backgroundColor: Colors.orange,
+            child: const FaIcon(FontAwesomeIcons.piggyBank),
+            label: "Cofrinho",
+            onTap: _openTransactionFormModalCofrinho,
+          ),
         ],
       ),
     );

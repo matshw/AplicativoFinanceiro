@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:tcc/components/appbar_cofrinho.dart';
 import 'package:tcc/screens/screen_economies.dart';
 import 'package:tcc/screens/screen_main.dart';
 import 'package:tcc/screens/screen_reports.dart';
@@ -39,19 +41,20 @@ class _ScreenTabsState extends State<ScreenTabs> {
 
   @override
   Widget build(BuildContext context) {
+    final screenTitle = _screens[_selectedScreenIndex]['title'] as String;
+
     return Scaffold(
-      appBar: _selectedScreenIndex == 0
-          ? null
-          : AppBar(
-              title: Text(_screens[_selectedScreenIndex]['title'] as String),
-            ),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(0),
+        child: Container(),
+      ),
       body: _screens[_selectedScreenIndex]['screen'] as Widget,
       bottomNavigationBar: BottomNavigationBar(
         onTap: _selectedScreen,
         currentIndex: _selectedScreenIndex,
         unselectedItemColor: Colors.white,
         selectedItemColor: Colors.black,
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: Color.fromRGBO(60, 72, 92, 1.0),
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
@@ -63,7 +66,7 @@ class _ScreenTabsState extends State<ScreenTabs> {
             label: "Transações",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.money),
+            icon: FaIcon(FontAwesomeIcons.piggyBank),
             label: "Economias",
           ),
           BottomNavigationBarItem(

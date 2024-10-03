@@ -52,14 +52,15 @@ class _FinanceiroAppState extends State<FinanceiroApp> {
               ),
             ),
         colorScheme: ThemeData.light().colorScheme.copyWith(
-              primary: Colors.blue[400],
-              secondary: Colors.blue[200],
+              primary: Color.fromRGBO(78, 105, 130, 1.0),
+              secondary: Color.fromRGBO(64, 86, 101, 1),
+              tertiary: Color.fromRGBO(108, 143, 177, 1),
             ),
       ),
       initialRoute: AppRoutes.HOME,
       routes: {
-        AppRoutes.HOME: (ctx) => const ScreenLogin(),
-        AppRoutes.INICIAL: (ctx) => ScreenTabs(),
+        AppRoutes.HOME: (ctx) => ScreenTabs(),
+        AppRoutes.INICIAL: (ctx) => ScreenLogin(),
         AppRoutes.REGISTRO: (ctx) => const ScreenRegister(),
       },
     );
