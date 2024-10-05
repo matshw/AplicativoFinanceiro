@@ -45,6 +45,11 @@ dependencies:
   firebase_storage: ^11.7.7
   flutter_speed_dial: ^7.0.0
   firebase_auth: ^4.20.0
+  fl_chart: ^0.69.0
+  pdf: ^3.11.1
+  path_provider: ^2.1.4
+  syncfusion_flutter_charts: ^27.1.51
+  printing: ^5.6.5
   
 
 dev_dependencies:

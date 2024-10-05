@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:image_picker/image_picker.dart'; // Import do image_picker
+import 'package:image_picker/image_picker.dart'; 
 import 'dart:io';
 
 class TransactionFormCofrinho extends StatefulWidget {
@@ -18,9 +18,8 @@ class _TransactionFormCofrinhoState extends State<TransactionFormCofrinho> {
   final TextEditingController _valorDesejadoController =
       TextEditingController();
   DateTime _selectedDate = DateTime.now();
-  File? _selectedImage; // Variável para armazenar a imagem selecionada
+  File? _selectedImage; 
 
-  // Função para abrir o seletor de imagem
   Future<void> _pickImage() async {
     final ImagePicker _picker = ImagePicker();
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
@@ -55,12 +54,11 @@ class _TransactionFormCofrinhoState extends State<TransactionFormCofrinho> {
       totalEconomizado = userSnapshot['valorTotal'];
     }
 
-    // Aqui salvamos a URL ou o caminho da imagem
     await userDoc.collection('investments').add({
       'valor': value,
       'valorDesejado': valorDesejado,
       'descricao': descricao,
-      'imagem': _selectedImage!.path, // Salvamos o caminho da imagem localmente
+      'imagem': _selectedImage!.path,
       'data': _selectedDate,
       'historico': [
         {

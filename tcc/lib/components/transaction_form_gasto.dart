@@ -198,15 +198,14 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
   String? imagem;
   FaIcon defaultIcon = FaIcon(FontAwesomeIcons.question);
 
-  bool isParcelado = false; // Controla o estado do switch parcelado
-  int? _selectedParcelas; // Armazena a quantidade de parcelas selecionada
+  bool isParcelado = false;
+  int? _selectedParcelas; 
   Stream<QuerySnapshot> _getFutureTransactionsStream() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       return Stream.empty();
     }
 
-    // Garanta que o Stream é criado apenas uma vez e não dentro do `setState`
     return _firestoreService.getFutureTransactionsStream(user.uid);
   }
 
@@ -238,20 +237,17 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
         var valor = doc['valor'];
         var descricao = doc['descricao'];
 
-        // Verifica se a transação já foi processada
         if (tipo == 'futura' &&
             (data.isBefore(DateTime.now()) ||
                 data.isAtSameMomentAs(DateTime.now()))) {
-          // Converte a transação futura em uma transação efetiva
           _firestoreService.updateTransacao(
             user.uid,
             doc.id,
             descricao,
             valor,
-            "gasto", // Agora é um gasto efetivo
+            "gasto",
           );
 
-          // Atualiza o saldo do usuário
           _firestoreService.updateInfo(
             user.uid,
             valor,
@@ -287,34 +283,30 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
 
     try {
       if (isParcelado && _selectedParcelas != null && _selectedParcelas! > 1) {
-        // Caso seja parcelado, dividimos o valor total pelo número de parcelas
         double parcelaValue = value / _selectedParcelas!;
         DateTime currentDate = _selectedDate;
 
         for (int i = 0; i < _selectedParcelas!; i++) {
-          // Criando transações futuras para cada parcela
           await _firestoreService.addTransacao(
             user.uid,
             "$description (Parcela ${i + 1}/$_selectedParcelas)",
             category,
-            "futura", // Marcamos como futura
+            "futura", 
             parcelaValue,
             currentDate,
             imagem,
             meioPagamento,
           );
 
-          // Incrementa a data para o próximo mês
           currentDate = DateTime(
               currentDate.year, currentDate.month + 1, currentDate.day);
         }
       } else {
-        // Caso não seja parcelado, trata como uma transação normal
         await _firestoreService.addTransacao(
           user.uid,
           description,
           category,
-          isFutureTransaction ? "futura" : "gasto", // Aqui definimos o tipo
+          isFutureTransaction ? "futura" : "gasto", 
           value,
           _selectedDate,
           imagem,
@@ -646,7 +638,6 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
                 SizedBox(
                   height: avaliableHeight * 0.05,
                 ),
-                // Novo widget de Parcelado
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -658,14 +649,13 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
                           isParcelado = newValue;
                           if (!isParcelado) {
                             _selectedParcelas =
-                                null; // Resetar quando desligado
+                                null; 
                           }
                         });
                       },
                     ),
                   ],
                 ),
-                // Exibir dropdown de parcelas somente se parcelado for ativado
                 if (isParcelado)
                   Column(
                     children: [

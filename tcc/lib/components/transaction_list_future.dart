@@ -16,7 +16,6 @@ class FutureTransactionList extends StatelessWidget {
     FirestoreService _firestoreService = FirestoreService();
 
     try {
-      // Verifique se o documento já foi marcado como gasto para evitar a duplicação de ações
       DocumentSnapshot docSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
@@ -31,8 +30,8 @@ class FutureTransactionList extends StatelessWidget {
             .collection('transacao')
             .doc(docID)
             .update({
-          'tipo': 'gasto', // Aqui estamos alterando o tipo da transação
-          'data': DateTime.now(), // Atualiza a data para a data de pagamento
+          'tipo': 'gasto', 
+          'data': DateTime.now(), 
         });
 
         await _firestoreService.updateInfo(uid, valor, -valor, 'gasto');
@@ -286,7 +285,7 @@ class FutureTransactionList extends StatelessWidget {
                         data: date,
                       );
                     },
-                    child: ListTile(
+                    child: ListTile(  
                       title: Text(
                         DateFormat.yMMMMEEEEd('pt_BR').format(date),
                         style: const TextStyle(
