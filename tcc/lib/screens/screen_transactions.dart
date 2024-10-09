@@ -580,7 +580,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 //       color: Colors.grey.shade500,
                 //       width: 1.0,
                 //     ),
-                //   ),
+                //   ), 
                 // ),
                 child: Row(
                   children: [

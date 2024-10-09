@@ -7,6 +7,14 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+final NumberFormat currencyFormatter = NumberFormat.currency(
+  locale: 'pt_BR',
+  symbol: 'R\$',
+  decimalDigits: 2,
+);
+
+final NumberFormat numberFormatter = NumberFormat.decimalPattern('pt_BR');
+
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
 
@@ -216,7 +224,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
         pw.Table.fromTextArray(
           headers: ['Categoria', 'Valor'],
           data: categorySums.entries
-              .map((entry) => [entry.key, 'R\$ ${entry.value.toStringAsFixed(2)}'])
+              .map((entry) =>
+                  [entry.key, 'R\$ ${entry.value.toStringAsFixed(2)}'])
               .toList(),
         ),
         pw.SizedBox(height: 10),
@@ -236,7 +245,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 pw.SizedBox(height: 5),
                 ...entry.value.map((transacao) {
                   return pw.Text(
-                      '${transacao['descricao']} - R\$ ${transacao['valor'].toStringAsFixed(2)}');
+                      '${transacao['descricao']} - R\$ ${currencyFormatter.format(transacao['valor'])}');
                 }).toList(),
                 pw.SizedBox(height: 10),
               ],
@@ -250,15 +259,22 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.primary,
       appBar: AppBar(
-        title: const Text('Relatórios Mensais'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        title: const Text(
+          'Relatórios Mensais',
+          style: TextStyle(color: Colors.white),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.calendar_today),
+            color: Colors.white,
             onPressed: () => _selectMonth(context),
           ),
           IconButton(
             icon: const Icon(Icons.picture_as_pdf),
+            color: Colors.white,
             onPressed: _exportPDF,
           ),
         ],
@@ -271,9 +287,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
               child: Text(
                 'Relatório de $_selectedMonth $_selectedYear',
                 style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
               ),
             ),
             _buildGanhoSection(),
@@ -290,27 +306,32 @@ class _ReportsScreenState extends State<ReportsScreen> {
       children: [
         const Text(
           'Ganhos',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         Row(
           children: [
             Expanded(
-              flex: 2,
+              flex: 1,
               child: _buildPieChart(ganhoCategorySums, ganhoColors),
             ),
             Expanded(
               flex: 1,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
                     'Total de Ganhos no Mês',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
                   ),
                   Text(
-                    'R\$ ${totalGanhos.toStringAsFixed(2)}',
+                    currencyFormatter.format(totalGanhos),
                     style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold),
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
                   ),
                 ],
               ),
@@ -328,7 +349,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
       children: [
         const Text(
           'Gastos',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         Row(
           children: [
@@ -343,12 +365,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 children: [
                   const Text(
                     'Total de Gastos no Mês',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
                   ),
                   Text(
-                    'R\$ ${totalGastos.toStringAsFixed(2)}',
+                    currencyFormatter.format(totalGastos),
                     style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold),
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
                   ),
                 ],
               ),
@@ -376,11 +403,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
     categorySums.forEach((category, totalValue) {
       sections.add(
         PieChartSectionData(
-          color: colors[category],
-          value: totalValue,
-          title:
-              '${((totalValue / (categorySums.values.reduce((a, b) => a + b))) * 100).toStringAsFixed(1)}%',
-        ),
+            color: colors[category],
+            value: totalValue,
+            title: currencyFormatter.format(totalValue),
+            titleStyle: TextStyle(color: Colors.white)),
       );
     });
 
@@ -417,24 +443,50 @@ class _ReportsScreenState extends State<ReportsScreen> {
         List<Map<String, dynamic>> categoryTransactions =
             transactions[category] ?? [];
 
-        return ExpansionTile(
-          leading: CircleAvatar(
-            backgroundColor: colors[category],
-            radius: 10,
+        double totalCategoryValue = categoryTransactions.fold(
+          0.0,
+          (sum, transaction) => sum + transaction['valor'],
+        );
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          child: ExpansionTile(
+            leading: CircleAvatar(
+              backgroundColor: colors[category],
+              radius: 10,
+            ),
+            title: Text(
+              '$category - ${currencyFormatter.format(totalCategoryValue)}',
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            subtitle: Text(
+              '${categoryTransactions.length} transações',
+              style: TextStyle(color: Colors.white),
+            ),
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            collapsedShape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.zero,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.zero,
+            ),
+            children: categoryTransactions.map((transaction) {
+              return ListTile(
+                title: Text(transaction['descricao'],
+                    style: TextStyle(color: Colors.white, fontSize: 16)),
+                subtitle: Text(
+                  DateFormat('dd/MM/yyyy').format(transaction['data'].toDate()),
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                trailing: Text(
+                  currencyFormatter.format(transaction['valor']),
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              );
+            }).toList(),
           ),
-          title: Text(
-            category,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          subtitle: Text('${categoryTransactions.length} transações'),
-          children: categoryTransactions.map((transaction) {
-            return ListTile(
-              title: Text(transaction['descricao']),
-              subtitle: Text(DateFormat('dd/MM/yyyy')
-                  .format(transaction['data'].toDate())),
-              trailing: Text('R\$ ${transaction['valor'].toStringAsFixed(2)}'),
-            );
-          }).toList(),
         );
       },
     );

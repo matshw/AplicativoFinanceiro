@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:tcc/utils/firestore_service.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:tcc/screens/screen_categories.dart'; // Importa a tela de seleção de categoria
 
 class TransactionForm extends StatefulWidget {
   final Function onSubmit;
@@ -15,154 +17,6 @@ class TransactionForm extends StatefulWidget {
 
   @override
   State<TransactionForm> createState() => _TransactionFormState();
-}
-
-class FirestoreService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  Future<void> addTransacao(
-  String uid,
-  String descricao,
-  String categoria,
-  String tipo,
-  double valor,
-  DateTime data,
-  String? imagem,
-) async {
-  try {
-    await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('transacao')
-        .add({
-      'descricao': descricao,
-      'categoria': categoria,
-      'tipo': tipo, 
-      'valor': valor,
-      'data': data,
-      'imagem': imagem ?? '',
-    });
-  } catch (e) {
-    print("Erro ao adicionar transação: $e");
-  }
-}
-
-
-  Future<void> updateInfo(
-  String uid,
-  double ganhoValue,
-  double saldoValue,
-) async {
-  try {
-    DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
-
-    double currentGanhoValue = doc['ganhoValue'] ?? 0.0;
-    double currentSaldoValue = doc['saldoValue'] ?? 0.0;
-
-    await _firestore.collection('users').doc(uid).update({
-      'ganhoValue': currentGanhoValue + ganhoValue,  
-      'saldoValue': currentSaldoValue + saldoValue, 
-    });
-  } catch (e) {
-    print("Erro ao atualizar informações: $e");
-  }
-}
-
-
-  Future<Map<String, double>> getInfo(String uid) async {
-    try {
-      DocumentSnapshot doc =
-          await _firestore.collection('users').doc(uid).get();
-      if (doc.exists) {
-        double ganhoValue = doc['ganhoValue'] ?? 0.0;
-        double saldoValue = doc['saldoValue'] ?? 0.0;
-        return {'ganhoValue': ganhoValue, 'saldoValue': saldoValue};
-      } else {
-        return {'ganhoValue': 0.0, 'saldoValue': 0.0};
-      }
-    } catch (e) {
-      print("Erro ao obter informações: $e");
-      return {'ganhoValue': 0.0, 'saldoValue': 0.0};
-    }
-  }
-
-  Stream<QuerySnapshot> getTransactionsStream(String uid) {
-    return _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('transacao')
-        .orderBy('data', descending: true)
-        .snapshots();
-  }
-
-  Stream<DocumentSnapshot> getSaldoStream(String uid) {
-    return _firestore.collection('users').doc(uid).snapshots();
-  }
-
-  Future<void> updateTransacao(
-    String uid,
-    String docID,
-    String descricao,
-    double valor,
-    String tipo,
-  ) async {
-    double difference = 0.0;
-
-    DocumentSnapshot docSnapshot = await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('transacao')
-        .doc(docID)
-        .get();
-    if (docSnapshot.exists) {
-      double oldValor = docSnapshot['valor'] ?? 0.0;
-      difference = valor - oldValor;
-    }
-
-    await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('transacao')
-        .doc(docID)
-        .update({
-      'descricao': descricao,
-      'valor': valor,
-    });
-
-    if (tipo == 'ganho') {
-      await _firestore.collection('users').doc(uid).update({
-        'saldoValue': FieldValue.increment(difference),
-        'ganhoValue': FieldValue.increment(difference)
-      });
-    } else if (tipo == 'gasto') {
-      await _firestore.collection('users').doc(uid).update({
-        'saldoValue': FieldValue.increment(-difference),
-        'gastoValue': FieldValue.increment(difference)
-      });
-    }
-  }
-
-  Future<void> removeTransacao(
-      String uid, String docID, double valor, String tipo) async {
-    await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('transacao')
-        .doc(docID)
-        .delete();
-
-    if (tipo == 'ganho') {
-      await _firestore.collection('users').doc(uid).update({
-        'saldoValue': FieldValue.increment(-valor),
-        'ganhoValue': FieldValue.increment(-valor)
-      });
-    } else if (tipo == 'gasto') {
-      await _firestore.collection('users').doc(uid).update({
-        'saldoValue': FieldValue.increment(valor),
-        'gastoValue': FieldValue.increment(-valor)
-      });
-    }
-  }
 }
 
 class _TransactionFormState extends State<TransactionForm> {
@@ -196,7 +50,7 @@ class _TransactionFormState extends State<TransactionForm> {
     );
   }
 
-  void _submitForm() async {
+  Future<void> _submitForm() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       _showError("Erro: usuário não autenticado.");
@@ -216,50 +70,29 @@ class _TransactionFormState extends State<TransactionForm> {
     double newGanhoValue = value;
 
     try {
-  await _firestoreService.addTransacao(
-    user.uid,           
-    description,        
-    category,           
-    "ganho",           
-    value,              
-    _selectedDate,      
-    imageURL            
-  );
+      await _firestoreService.addTransacao(user.uid, description, category,
+          "ganho", value, _selectedDate, imageURL);
 
-  await _firestoreService.updateInfo(
-    user.uid,
-    newGanhoValue,      
-    newSaldoValue       
-  );
+      await _firestoreService.updateInfo(
+          user.uid, newGanhoValue, newSaldoValue);
 
-  setState(() {
-    ganhoValue += newGanhoValue; 
-    saldoValue += newSaldoValue;  
-  });
+      setState(() {
+        ganhoValue += newGanhoValue;
+        saldoValue += newSaldoValue;
+      });
 
-  widget.balanceNotifier.value = {
-    'ganhoValue': ganhoValue,  
-    'saldoValue': saldoValue,  
-  };
+      widget.balanceNotifier.value = {
+        'ganhoValue': ganhoValue,
+        'saldoValue': saldoValue,
+      };
 
-  Navigator.of(context).pop();
-} catch (e) {
-  _showError("Erro ao adicionar transação de ganho.");
-}
-
+      Navigator.of(context).pop();
+    } catch (e) {
+      _showError("Erro ao adicionar transação de ganho.");
+    }
   }
 
-  final Map<String, FaIcon> _categories = {
-    'Salário': const FaIcon(FontAwesomeIcons.sackDollar),
-    'Freelance': const FaIcon(FontAwesomeIcons.briefcase),
-    'Venda': const FaIcon(FontAwesomeIcons.circleDollarToSlot),
-    'Comissão': const FaIcon(FontAwesomeIcons.handHoldingDollar),
-    'Presente': const FaIcon(FontAwesomeIcons.gift),
-    'Consultoria': const FaIcon(FontAwesomeIcons.magnifyingGlassDollar),
-    'Outros': const FaIcon(FontAwesomeIcons.circleQuestion),
-  };
-
-  void _selectImage() async {
+  Future<void> _selectImage() async {
     ImagePicker imagePicker = ImagePicker();
     XFile? file = await imagePicker.pickImage(source: ImageSource.gallery);
 
@@ -269,11 +102,8 @@ class _TransactionFormState extends State<TransactionForm> {
       try {
         String uniqueFileName =
             DateTime.now().millisecondsSinceEpoch.toString();
-
         Reference referenceRoot = FirebaseStorage.instance.ref();
-
         Reference referenceImageDirectory = referenceRoot.child('images');
-
         Reference referenceImageUploaded =
             referenceImageDirectory.child('$uniqueFileName.jpg');
 
@@ -327,6 +157,20 @@ class _TransactionFormState extends State<TransactionForm> {
         });
       }
     });
+  }
+
+  void _openCategorySelection() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SelectCategoryScreen(
+          onCategorySelected: (category, icon) {
+            setState(() {
+              _selectedCategory = category;
+            });
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -408,29 +252,10 @@ class _TransactionFormState extends State<TransactionForm> {
                   alignment: Alignment.centerLeft,
                   child: Text("Categoria"),
                 ),
-                Align(
-                  alignment: Alignment.center,
-                  child: DropdownButton<String>(
-                    value: _selectedCategory,
-                    items: _categories.entries.map((entry) {
-                      return DropdownMenuItem<String>(
-                        value: entry.key,
-                        child: Row(
-                          children: [
-                            entry.value,
-                            const SizedBox(width: 8),
-                            Text(entry.key),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (newValue) {
-                      setState(() {
-                        _selectedCategory = newValue;
-                      });
-                    },
-                    hint: const Text("Selecione uma categoria"),
-                  ),
+                ListTile(
+                  leading: Icon(Icons.category),
+                  title: Text(_selectedCategory ?? "Selecionar Categoria"),
+                  onTap: _openCategorySelection,
                 ),
                 SizedBox(height: avaliableHeight * 0.05),
                 const Align(
@@ -460,8 +285,8 @@ class _TransactionFormState extends State<TransactionForm> {
                   children: [
                     Row(
                       children: [
-                        const FaIcon(
-                          FontAwesomeIcons.solidImage,
+                        const Icon(
+                          Icons.image,
                           color: Colors.blue,
                         ),
                         MaterialButton(
