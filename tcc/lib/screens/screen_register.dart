@@ -24,6 +24,7 @@ class _ScreenRegisterState extends State<ScreenRegister> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.primary,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(8.0),
@@ -32,28 +33,36 @@ class _ScreenRegisterState extends State<ScreenRegister> {
             children: [
               Text(
                 "Registro",
-                style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
               ),
               SizedBox(height: 15),
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                    labelText: "E-mail",
-                    fillColor: Colors.grey.shade200,
-                    filled: true,
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12.0),
-                        borderSide: const BorderSide(
-                          color: Colors.blue,
-                          width: 1.0,
-                        )),
-                    focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12.0),
-                        borderSide: const BorderSide(
-                          color: Colors.blue,
-                          width: 2.0,
-                        ))),
+                  labelText: 'Email',
+                  labelStyle:
+                      TextStyle(color: Color.fromRGBO(158, 185, 211, 1)),
+                  fillColor: Theme.of(context).colorScheme.tertiary,
+                  filled: true,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15.0),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 1.0,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15.0),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2.0,
+                    ),
+                  ),
+                ),
               ),
               SizedBox(
                 height: 15,
@@ -62,28 +71,55 @@ class _ScreenRegisterState extends State<ScreenRegister> {
                 controller: _passwordController,
                 keyboardType: TextInputType.visiblePassword,
                 decoration: InputDecoration(
-                    labelText: "Senha",
-                    fillColor: Colors.grey.shade200,
-                    filled: true,
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12.0),
-                        borderSide: const BorderSide(
-                          color: Colors.blue,
-                          width: 1.0,
-                        )),
-                    focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12.0),
-                        borderSide: const BorderSide(
-                          color: Colors.blue,
-                          width: 2.0,
-                        ))),
+                  labelText: 'Senha',
+                  labelStyle:
+                      TextStyle(color: Color.fromRGBO(158, 185, 211, 1)),
+                  fillColor: Theme.of(context).colorScheme.tertiary,
+                  filled: true,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15.0),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 1.0,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15.0),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2.0,
+                    ),
+                  ),
+                ),
               ),
-              ElevatedButton(onPressed: signUp, child: Text("Registrar-se")),
+              ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.tertiary,
+                      elevation: 10,
+                      fixedSize: Size.fromHeight(50)),
+                  onPressed: signUp,
+                  child: Text(
+                    "Registrar-se",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600),
+                  )),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text("Já tem uma conta?"),
-                  TextButton(onPressed: () {Navigator.pushNamed(context, '/');}, child: Text("Login"))
+                  Text(
+                    "Já tem uma conta?",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  TextButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/');
+                      },
+                      child: Text(
+                        "Login",
+                        style: TextStyle(color: Colors.white),
+                      ))
                 ],
               )
             ],

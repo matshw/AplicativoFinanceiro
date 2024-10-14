@@ -86,6 +86,8 @@ class _TransactionFormCofrinhoState extends State<TransactionFormCofrinho> {
       resizeToAvoidBottomInset: false,
       backgroundColor: Theme.of(context).colorScheme.primary,
       appBar: AppBar(
+                foregroundColor: Colors.white,
+
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: const Text(
           'Adicionar ao Cofrinho',

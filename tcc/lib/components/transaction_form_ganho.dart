@@ -7,7 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:tcc/utils/firestore_service.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:tcc/screens/screen_categories.dart'; // Importa a tela de seleção de categoria
+import 'package:tcc/screens/screen_categories.dart';
 
 class TransactionForm extends StatefulWidget {
   final Function onSubmit;
@@ -179,10 +179,15 @@ class _TransactionFormState extends State<TransactionForm> {
     final avaliableHeight = mediaQuery.size.height - mediaQuery.padding.top;
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 230, 248, 244),
+      backgroundColor: Theme.of(context).colorScheme.primary,
       appBar: AppBar(
-        backgroundColor: Colors.blue,
-        title: const Text("Adicionar Ganho"),
+                foregroundColor: Colors.white,
+
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        title: const Text(
+          "Adicionar Ganho",
+          style: TextStyle(color: Colors.white),
+        ),
       ),
       resizeToAvoidBottomInset: true,
       body: Padding(
@@ -195,25 +200,33 @@ class _TransactionFormState extends State<TransactionForm> {
               children: <Widget>[
                 const Align(
                   alignment: Alignment.centerLeft,
-                  child: Text("Descrição"),
+                  child: Text(
+                    "Descrição",
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white),
+                  ),
                 ),
                 TextField(
                   controller: _descriptionController,
                   decoration: InputDecoration(
-                    labelText: "Descrição",
-                    fillColor: Colors.grey.shade200,
+                    labelText: 'Descrição',
+                    labelStyle:
+                        TextStyle(color: Color.fromRGBO(158, 185, 211, 1)),
+                    fillColor: Theme.of(context).colorScheme.tertiary,
                     filled: true,
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                      borderSide: const BorderSide(
-                        color: Colors.blue,
+                      borderRadius: BorderRadius.circular(15.0),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
                         width: 1.0,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                      borderSide: const BorderSide(
-                        color: Colors.blue,
+                      borderRadius: BorderRadius.circular(15.0),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
                         width: 2.0,
                       ),
                     ),
@@ -222,26 +235,34 @@ class _TransactionFormState extends State<TransactionForm> {
                 SizedBox(height: avaliableHeight * 0.05),
                 const Align(
                   alignment: Alignment.centerLeft,
-                  child: Text("Valor (R\$)"),
+                  child: Text(
+                    "Valor (R\$)",
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white),
+                  ),
                 ),
                 TextField(
                   controller: _valueController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    labelText: "Valor R\$",
-                    fillColor: Colors.grey.shade200,
+                    labelText: 'Valor R\$',
+                    labelStyle:
+                        TextStyle(color: Color.fromRGBO(158, 185, 211, 1)),
+                    fillColor: Theme.of(context).colorScheme.tertiary,
                     filled: true,
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(15.0),
-                      borderSide: const BorderSide(
-                        color: Colors.blue,
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
                         width: 1.0,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(15.0),
-                      borderSide: const BorderSide(
-                        color: Colors.blue,
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
                         width: 2.0,
                       ),
                     ),
@@ -250,31 +271,55 @@ class _TransactionFormState extends State<TransactionForm> {
                 SizedBox(height: avaliableHeight * 0.05),
                 const Align(
                   alignment: Alignment.centerLeft,
-                  child: Text("Categoria"),
+                  child: Text(
+                    "Categoria",
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white),
+                  ),
                 ),
                 ListTile(
-                  leading: Icon(Icons.category),
-                  title: Text(_selectedCategory ?? "Selecionar Categoria"),
+                  leading: Icon(
+                    Icons.category,
+                    color: Colors.white,
+                  ),
+                  title: Text(
+                    _selectedCategory ?? "Selecionar Categoria",
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white),
+                  ),
                   onTap: _openCategorySelection,
                 ),
                 SizedBox(height: avaliableHeight * 0.05),
                 const Align(
                   alignment: Alignment.centerLeft,
-                  child: Text("Data de recebimento"),
+                  child: Text(
+                    "Data de recebimento",
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white),
+                  ),
                 ),
                 Row(
                   children: [
                     Expanded(
                       child: Text(
                         DateFormat('dd/MM/yyyy').format(_selectedDate),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.black54,
-                        ),
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.calendar_today),
+                      icon: const Icon(
+                        Icons.calendar_today,
+                        color: Colors.white,
+                      ),
                       onPressed: _showDatePicker,
                     ),
                   ],
@@ -287,7 +332,7 @@ class _TransactionFormState extends State<TransactionForm> {
                       children: [
                         const Icon(
                           Icons.image,
-                          color: Colors.blue,
+                          color: Colors.white,
                         ),
                         MaterialButton(
                           onPressed: () async {
@@ -295,7 +340,7 @@ class _TransactionFormState extends State<TransactionForm> {
                           },
                           child: const Text(
                             "Anexar imagem",
-                            style: TextStyle(color: Colors.blue),
+                            style: TextStyle(color: Colors.white),
                           ),
                         ),
                       ],
@@ -305,13 +350,13 @@ class _TransactionFormState extends State<TransactionForm> {
                         onPressed: _showImagePopup,
                         child: const Text(
                           "Ver imagem",
-                          style: TextStyle(color: Colors.blue),
+                          style: TextStyle(color: Colors.white),
                         ),
                       )
                     else
                       const Text(
                         "Nenhuma imagem selecionada",
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(color: Colors.white),
                       ),
                   ],
                 ),
@@ -321,8 +366,19 @@ class _TransactionFormState extends State<TransactionForm> {
                   children: [
                     Expanded(
                       child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                Theme.of(context).colorScheme.tertiary,
+                            elevation: 10,
+                            fixedSize: Size.fromHeight(50)),
                         onPressed: _submitForm,
-                        child: const Text("Adicionar"),
+                        child: const Text(
+                          "Adicionar ganho",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
                   ],

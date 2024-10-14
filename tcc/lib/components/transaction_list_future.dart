@@ -4,6 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:tcc/components/transaction_form_gasto.dart';
 
+final NumberFormat currencyFormatter = NumberFormat.currency(
+  locale: 'pt_BR',
+  symbol: 'R\$',
+  decimalDigits: 2,
+);
+
+final NumberFormat numberFormatter = NumberFormat.decimalPattern('pt_BR');
+
 class FutureTransactionList extends StatelessWidget {
   const FutureTransactionList();
   void _markAsPaid({
@@ -30,8 +38,8 @@ class FutureTransactionList extends StatelessWidget {
             .collection('transacao')
             .doc(docID)
             .update({
-          'tipo': 'gasto', 
-          'data': DateTime.now(), 
+          'tipo': 'gasto',
+          'data': DateTime.now(),
         });
 
         await _firestoreService.updateInfo(uid, valor, -valor, 'gasto');
@@ -120,7 +128,7 @@ class FutureTransactionList extends StatelessWidget {
   }) {
     final descricaoController = TextEditingController(text: descricao);
     final valueController =
-        TextEditingController(text: valor.toStringAsFixed(2));
+        TextEditingController(text: currencyFormatter.format(valor));
 
     FirestoreService firestoreService = FirestoreService();
     final mediaQuery = MediaQuery.of(context);
@@ -285,7 +293,7 @@ class FutureTransactionList extends StatelessWidget {
                         data: date,
                       );
                     },
-                    child: ListTile(  
+                    child: ListTile(
                       title: Text(
                         DateFormat.yMMMMEEEEd('pt_BR').format(date),
                         style: const TextStyle(
@@ -300,8 +308,8 @@ class FutureTransactionList extends StatelessWidget {
                           FittedBox(
                             child: Text(
                               tipo == 'ganho'
-                                  ? "R\$ ${transacaoValor.toStringAsFixed(2)}"
-                                  : "R\$ -${transacaoValor.toStringAsFixed(2)}",
+                                  ? currencyFormatter.format(transacaoValor)
+                                  : "-${currencyFormatter.format(transacaoValor)}",
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,

@@ -12,7 +12,6 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
   final TextEditingController _nameController = TextEditingController();
   FaIcon? _selectedIcon;
 
-  // A lista de ícones para o usuário selecionar (a mesma que foi usada antes)
   final List<FaIcon> _icons = [
     FaIcon(FontAwesomeIcons.burger),
     FaIcon(FontAwesomeIcons.shirt),
@@ -23,7 +22,6 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
 
   final FirestoreService _firestoreService = FirestoreService();
 
-  // Função para salvar a categoria
   void _saveCategory() {
     if (_nameController.text.isNotEmpty && _selectedIcon != null) {
       _firestoreService
@@ -49,7 +47,6 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
               decoration: InputDecoration(labelText: 'Nome da Categoria'),
             ),
             SizedBox(height: 20),
-            // Exibição dos ícones disponíveis para seleção
             Wrap(
               spacing: 10,
               children: _icons.map((icon) {

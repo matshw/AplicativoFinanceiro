@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Função para adicionar uma nova transação
   Future<void> addTransacao(
     String uid,
     String descricao,
@@ -14,7 +13,11 @@ class FirestoreService {
     String? imagem,
   ) async {
     try {
-      await _firestore.collection('users').doc(uid).collection('transacao').add({
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('transacao')
+          .add({
         'descricao': descricao,
         'categoria': categoria,
         'tipo': tipo,
@@ -27,14 +30,14 @@ class FirestoreService {
     }
   }
 
-  // Função para atualizar informações de saldo e ganhos
   Future<void> updateInfo(
     String uid,
     double ganhoValue,
     double saldoValue,
   ) async {
     try {
-      DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
+      DocumentSnapshot doc =
+          await _firestore.collection('users').doc(uid).get();
 
       double currentGanhoValue = doc['ganhoValue'] ?? 0.0;
       double currentSaldoValue = doc['saldoValue'] ?? 0.0;
@@ -48,7 +51,6 @@ class FirestoreService {
     }
   }
 
-  // Função para obter as informações de saldo e ganhos
   Future<Map<String, double>> getInfo(String uid) async {
     try {
       DocumentSnapshot doc =
@@ -66,7 +68,6 @@ class FirestoreService {
     }
   }
 
-  // Stream para obter transações em tempo real
   Stream<QuerySnapshot> getTransactionsStream(String uid) {
     return _firestore
         .collection('users')
@@ -76,7 +77,6 @@ class FirestoreService {
         .snapshots();
   }
 
-  // Função para atualizar transações existentes
   Future<void> updateTransacao(
     String uid,
     String docID,
@@ -108,7 +108,7 @@ class FirestoreService {
       'descricao': descricao,
       'valor': valor,
       'categoria': categoria,
-      'data': date,
+      'data': Timestamp.fromDate(date),
     });
 
     if (tipo == 'ganho') {
@@ -124,7 +124,6 @@ class FirestoreService {
     }
   }
 
-  // Função para remover transações
   Future<void> removeTransacao(
     String uid,
     String docID,
@@ -151,12 +150,10 @@ class FirestoreService {
     }
   }
 
-  // Stream para obter saldo em tempo real
   Stream<DocumentSnapshot> getSaldoStream(String uid) {
     return _firestore.collection('users').doc(uid).snapshots();
   }
 
-  // Função para obter o saldo total
   Future<double> getSaldoTotal(String uid) async {
     DocumentSnapshot docSnapshot =
         await _firestore.collection('users').doc(uid).get();
@@ -167,12 +164,10 @@ class FirestoreService {
     }
   }
 
-  // Stream para obter categorias
   Stream<QuerySnapshot> getCategoriesStream() {
     return _firestore.collection('categories').snapshots();
   }
 
-  // Função para adicionar uma nova categoria
   Future<void> addCategory(String name, int iconCode) async {
     await _firestore.collection('categories').add({
       'name': name,

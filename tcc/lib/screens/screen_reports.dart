@@ -55,71 +55,76 @@ class _ReportsScreenState extends State<ReportsScreen> {
   };
 
   void _selectMonth(BuildContext context) async {
+    int tempMonth = _selectedDate.month;
+    int tempYear = _selectedYear;
+
     int? selectedMonth = await showDialog<int>(
       context: context,
       builder: (BuildContext context) {
-        int tempMonth = _selectedDate.month;
-        return AlertDialog(
-          title: const Text('Escolha o mês'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButton<int>(
-                value: tempMonth,
-                items: List.generate(12, (index) {
-                  return DropdownMenuItem(
-                    value: index + 1,
-                    child: Text(DateFormat('MMMM', 'pt_BR')
-                        .format(DateTime(0, index + 1))),
-                  );
-                }),
-                onChanged: (newValue) {
-                  tempMonth = newValue!;
-                  setState(() {
-                    _selectedMonth = DateFormat('MMMM', 'pt_BR')
-                        .format(DateTime(0, tempMonth));
-                  });
-                },
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setDialogState) {
+            return AlertDialog(
+              title: const Text('Escolha o mês'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButton<int>(
+                    value: tempMonth,
+                    items: List.generate(12, (index) {
+                      return DropdownMenuItem(
+                        value: index + 1,
+                        child: Text(DateFormat('MMMM', 'pt_BR')
+                            .format(DateTime(0, index + 1))),
+                      );
+                    }),
+                    onChanged: (newValue) {
+                      setDialogState(() {
+                        tempMonth = newValue!;
+                      });
+                    },
+                  ),
+                  DropdownButton<int>(
+                    value: tempYear,
+                    items: List.generate(50, (index) {
+                      int year = DateTime.now().year - 49 + index;
+                      return DropdownMenuItem(
+                        value: year,
+                        child: Text(year.toString()),
+                      );
+                    }),
+                    onChanged: (newValue) {
+                      setDialogState(() {
+                        tempYear = newValue!;
+                      });
+                    },
+                  ),
+                ],
               ),
-              DropdownButton<int>(
-                value: _selectedYear,
-                items: List.generate(50, (index) {
-                  int year = DateTime.now().year - 49 + index;
-                  return DropdownMenuItem(
-                    value: year,
-                    child: Text(year.toString()),
-                  );
-                }),
-                onChanged: (newValue) {
-                  setState(() {
-                    _selectedYear = newValue!;
-                  });
-                },
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancelar'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: const Text('Selecionar'),
-              onPressed: () {
-                Navigator.of(context).pop(tempMonth);
-              },
-            ),
-          ],
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('Cancelar'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+                TextButton(
+                  child: const Text('Selecionar'),
+                  onPressed: () {
+                    Navigator.of(context).pop(tempMonth);
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );
 
     if (selectedMonth != null) {
       setState(() {
-        _selectedDate = DateTime(_selectedYear, selectedMonth);
+        _selectedDate = DateTime(tempYear, selectedMonth);
         _selectedMonth = DateFormat('MMMM', 'pt_BR').format(_selectedDate);
+        _selectedYear = tempYear;
       });
       _loadData();
     }
@@ -221,11 +226,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
           style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 10),
-        pw.Table.fromTextArray(
+        pw.TableHelper.fromTextArray(
           headers: ['Categoria', 'Valor'],
           data: categorySums.entries
               .map((entry) =>
-                  [entry.key, 'R\$ ${entry.value.toStringAsFixed(2)}'])
+                  [entry.key, '${currencyFormatter.format(entry.value)}'])
               .toList(),
         ),
         pw.SizedBox(height: 10),

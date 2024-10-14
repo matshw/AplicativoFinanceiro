@@ -3,6 +3,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:tcc/screens/screen_categories.dart';
+import 'package:tcc/screens/screen_categories_gasto.dart';
+import 'package:tcc/screens/screen_payments.dart';
+
+final NumberFormat currencyFormatter = NumberFormat.currency(
+  locale: 'pt_BR',
+  symbol: 'R\$',
+  decimalDigits: 2,
+);
+
+final NumberFormat numberFormatter = NumberFormat.decimalPattern('pt_BR');
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -24,6 +35,7 @@ class FirestoreService {
     String tipo,
     String? categoria,
     DateTime date,
+    String? meioPagamento,
   ) async {
     double difference = 0.0;
 
@@ -48,6 +60,7 @@ class FirestoreService {
       'valor': valor,
       'categoria': categoria,
       'data': date,
+      'meioPagamento': meioPagamento,
     });
 
     if (tipo == 'ganho') {
@@ -119,7 +132,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final String? imagem = data['imagem'];
 
     final tipo = data['tipo'];
-    final categoria = data['categoria'];
+    final categoria = data['categoria'] ?? "Categoria nao encontrada";
     final dateTimestamp = data['data'];
     final date = dateTimestamp.toDate();
 
@@ -188,190 +201,194 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   void _showEditDialog(DocumentSnapshot document) {
-    final data = document.data() as Map<String, dynamic>;
-    final descricao = data['descricao'];
-    final valor = data['valor'].toString();
-    final tipo = data['tipo'];
-    final categoria = data['categoria'];
-    final dateTimestamp = data['data'];
-    final date = dateTimestamp.toDate();
+  final data = document.data() as Map<String, dynamic>;
+  final descricao = data['descricao'];
+  final valor = data['valor'].toString();
+  final tipo = data['tipo'];
+  final categoria = data['categoria'] ?? "Categoria nao encontrada";
+  final meioPagamento = data['meioPagamento'] ?? "Meio de pagamento nao encontrado";
+  final dateTimestamp = data['data'];
+  final date = dateTimestamp.toDate();
 
-    TextEditingController descricaoController =
-        TextEditingController(text: descricao);
-    TextEditingController valorController = TextEditingController(text: valor);
-    String? _selectedCategory = categoria;
-    DateTime _selectedDate = date;
+  TextEditingController descricaoController = TextEditingController(text: descricao);
+  TextEditingController valorController = TextEditingController(text: valor);
+  String? _selectedCategory = categoria;
+  String? _selectedPaymentMethod = meioPagamento;
+  DateTime _selectedDate = date;
 
-    final Map<String, FaIcon> _gainCategories = {
-      'Salário': const FaIcon(FontAwesomeIcons.sackDollar),
-      'Freelance': const FaIcon(FontAwesomeIcons.briefcase),
-      'Venda': const FaIcon(FontAwesomeIcons.circleDollarToSlot),
-      'Comissão': const FaIcon(FontAwesomeIcons.handHoldingDollar),
-      'Presente': const FaIcon(FontAwesomeIcons.gift),
-      'Consultoria': const FaIcon(FontAwesomeIcons.magnifyingGlassDollar),
-      'Outros': const FaIcon(FontAwesomeIcons.circleQuestion),
-    };
-
-    final Map<String, FaIcon> _expenseCategories = {
-      'Comida': const FaIcon(FontAwesomeIcons.burger),
-      'Roupas': const FaIcon(FontAwesomeIcons.shirt),
-      'Lazer': const FaIcon(FontAwesomeIcons.futbol),
-      'Transporte': const FaIcon(FontAwesomeIcons.bicycle),
-      'Saúde': const FaIcon(FontAwesomeIcons.suitcaseMedical),
-      'Presentes': const FaIcon(FontAwesomeIcons.gift),
-      'Educação': const FaIcon(FontAwesomeIcons.book),
-      'Beleza': const FaIcon(FontAwesomeIcons.paintbrush),
-      'Emergência': const FaIcon(FontAwesomeIcons.hospital),
-      'Reparos': const FaIcon(FontAwesomeIcons.hammer),
-      'Streaming': const FaIcon(FontAwesomeIcons.tv),
-      'Serviços': const FaIcon(FontAwesomeIcons.clipboard),
-      'Tecnologia': const FaIcon(FontAwesomeIcons.laptop),
-      'Outros': const FaIcon(FontAwesomeIcons.circleQuestion),
-    };
-
-    void _showDatePicker(StateSetter setState) {
-      showDatePicker(
-        context: context,
-        firstDate: DateTime(2020),
-        lastDate: DateTime.now(),
-        initialDate: _selectedDate,
-        locale: const Locale('pt', 'BR'),
-      ).then((pickedDate) {
-        if (pickedDate != null && pickedDate != _selectedDate) {
-          setState(() {
-            _selectedDate = pickedDate;
-          });
-        }
-      });
-    }
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Editar Transação'),
-          content: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: descricaoController,
-                    decoration: const InputDecoration(labelText: 'Descrição'),
-                  ),
-                  TextField(
-                    controller: valorController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Valor'),
-                  ),
-                  const SizedBox(height: 20),
-                  if (tipo == 'ganho')
-                    FittedBox(
-                      child: DropdownButton<String>(
-                        value: _selectedCategory,
-                        hint: const Text("Selecione uma categoria de ganho"),
-                        items: _gainCategories.keys.map((String category) {
-                          return DropdownMenuItem<String>(
-                            value: category,
-                            child: Row(
-                              children: [
-                                _gainCategories[category]!,
-                                const SizedBox(width: 8),
-                                Text(category),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (String? value) {
-                          setState(() {
-                            _selectedCategory = value;
-                          });
-                        },
-                      ),
-                    ),
-                  if (tipo == 'gasto')
-                    FittedBox(
-                      child: DropdownButton<String>(
-                        value: _selectedCategory,
-                        hint: const Text("Selecione uma categoria de gasto"),
-                        items: _expenseCategories.keys.map((String category) {
-                          return DropdownMenuItem<String>(
-                            value: category,
-                            child: Row(
-                              children: [
-                                _expenseCategories[category]!,
-                                const SizedBox(width: 8),
-                                Text(category),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedCategory = value;
-                          });
-                        },
-                      ),
-                    ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "Data: ${DateFormat('dd/MM/yyyy').format(_selectedDate)}",
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.calendar_today),
-                        onPressed: () {
-                          _showDatePicker(setState);
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              );
+  void _selectCategory(StateSetter setState) {
+    if (tipo == 'ganho') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SelectCategoryScreen(
+            onCategorySelected: (selectedCategory, icon) {
+              setState(() {
+                _selectedCategory = selectedCategory;
+              });
             },
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _updateTransacao(
-                  document.id,
-                  descricaoController.text,
-                  double.parse(valorController.text),
-                  tipo,
-                  _selectedCategory,
-                  _selectedDate,
-                );
-              },
-              child: const Text('Salvar'),
-            ),
-          ],
-        );
-      },
-    );
+        ),
+      ).then((_) {
+        setState(() {}); // Atualiza a UI em tempo real
+      });
+    } else if (tipo == 'gasto') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SelectGastoCategoryScreen(
+            onCategorySelected: (selectedCategory, icon) {
+              setState(() {
+                _selectedCategory = selectedCategory;
+              });
+            },
+          ),
+        ),
+      ).then((_) {
+        setState(() {}); // Atualiza a UI em tempo real
+      });
+    }
   }
 
+  void _selectPaymentMethod(StateSetter setState) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SelectPaymentMethodScreen(
+          onPaymentMethodSelected: (selectedMethod, icon) {
+            setState(() {
+              _selectedPaymentMethod = selectedMethod;
+            });
+          },
+        ),
+      ),
+    ).then((_) {
+      setState(() {}); // Atualiza a UI em tempo real
+    });
+  }
+
+  void _showDatePicker(StateSetter setState) {
+    showDatePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDate: _selectedDate,
+      locale: const Locale('pt', 'BR'),
+    ).then((pickedDate) {
+      if (pickedDate != null && pickedDate != _selectedDate) {
+        setState(() {
+          _selectedDate = pickedDate;
+        });
+      }
+    });
+  }
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text('Editar Transação'),
+        content: StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: descricaoController,
+                  decoration: const InputDecoration(labelText: 'Descrição'),
+                ),
+                TextField(
+                  controller: valorController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Valor'),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => _selectCategory(setState),
+                  child: Text(_selectedCategory != null
+                      ? _selectedCategory!
+                      : 'Selecionar Categoria'),
+                ),
+                if (tipo == 'gasto') // Exibe o botão apenas para gasto
+                  ElevatedButton(
+                    onPressed: () => _selectPaymentMethod(setState),
+                    child: Text(_selectedPaymentMethod != null
+                        ? _selectedPaymentMethod!
+                        : 'Selecionar Meio de Pagamento'),
+                  ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        "Data: ${DateFormat('dd/MM/yyyy').format(_selectedDate)}",
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.calendar_today),
+                      onPressed: () {
+                        _showDatePicker(setState);
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _updateTransacao(
+                document.id,
+                descricaoController.text,
+                double.parse(valorController.text),
+                tipo,
+                _selectedCategory,
+                _selectedDate,
+                _selectedPaymentMethod,
+              );
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
   void _updateTransacao(String docID, String descricao, double valor,
-      String tipo, String? categoria, DateTime date) {
+      String tipo, String? categoria, DateTime date, String? meioPagamento) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     FirestoreService firestoreService = FirestoreService();
     firestoreService
         .updateTransacao(
-            user.uid, docID, descricao, valor, tipo, categoria, date)
+      user.uid,
+      docID,
+      descricao,
+      valor,
+      tipo,
+      categoria ?? "Categoria nao esppecificada",
+      date,
+      tipo == 'gasto'
+          ? meioPagamento ?? 'Meio de pagamento não especificado'
+          : null, // Só atualiza meio de pagamento se for gasto
+    )
         .then((_) {
       setState(() {});
-    }).catchError((error) {});
+    }).catchError((error) {
+      // Handle errors if needed
+    });
   }
 
   void _removeTransacao(String docID, double valor, String tipo) {
@@ -381,7 +398,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     FirestoreService firestoreService = FirestoreService();
     firestoreService.removeTransacao(user.uid, docID, valor, tipo).then((_) {
       setState(() {});
-    }).catchError((error) {});
+    }).catchError((error) {
+      // Handle errors if needed
+    });
   }
 
   final Map<String, FaIcon> _categories = {
@@ -574,14 +593,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               width: mediaQuery.size.width * 0.95,
               child: Container(
                 padding: EdgeInsets.only(top: 10),
-                // decoration: BoxDecoration(
-                //   border: Border(
-                //     bottom: BorderSide(
-                //       color: Colors.grey.shade500,
-                //       width: 1.0,
-                //     ),
-                //   ), 
-                // ),
                 child: Row(
                   children: [
                     Expanded(
@@ -672,7 +683,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                       String transacaoDescricao = data['descricao'];
                       double transacaoValor = data['valor'];
                       String tipo = data['tipo'];
-                      String categoria = data['categoria'];
+                      String categoria =
+                          data['categoria'] ?? 'Categoria não especificada';
+                      ;
+                      String meioPagamento = data['meioPagamento'] ??
+                          'Meio de pagamento não especificado';
                       Timestamp dateTimestamp = data['data'];
                       DateTime date = dateTimestamp.toDate();
 
@@ -690,17 +705,18 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           },
                           leading: categoryIcon,
                           title: Text(
-                            categoria,
+                            "$transacaoDescricao${tipo == 'gasto' ? ' - $meioPagamento' : ''}",
                             style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                                color: Color.fromARGB(255, 255, 255, 255)),
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: Color.fromARGB(255, 255, 255, 255),
+                            ),
                           ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                transacaoDescricao,
+                                categoria,
                                 style: TextStyle(
                                     fontSize: 16,
                                     color: Color.fromARGB(241, 255, 255, 255)),
@@ -714,8 +730,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           ),
                           trailing: Text(
                             tipo == 'ganho'
-                                ? "R\$ ${transacaoValor.toStringAsFixed(2)}"
-                                : "R\$ -${transacaoValor.toStringAsFixed(2)}",
+                                ? "${currencyFormatter.format(transacaoValor)}"
+                                : "-${currencyFormatter.format(transacaoValor)}",
                             style: TextStyle(
                               fontSize: 18,
                               color: tipo == 'ganho'

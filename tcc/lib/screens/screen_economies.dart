@@ -6,6 +6,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:tcc/components/appbar_cofrinho.dart';
 
+final NumberFormat currencyFormatter = NumberFormat.currency(
+  locale: 'pt_BR',
+  symbol: 'R\$',
+  decimalDigits: 2,
+);
+
+final NumberFormat numberFormatter = NumberFormat.decimalPattern('pt_BR');
+
 class EconomiesScreen extends StatelessWidget {
   const EconomiesScreen({Key? key}) : super(key: key);
 
@@ -230,8 +238,8 @@ class EconomiesScreen extends StatelessWidget {
                     return ListTile(
                       title: Text(
                         valor < 0
-                            ? '- R\$ ${valor.abs().toStringAsFixed(2)}'
-                            : 'R\$ ${valor.toStringAsFixed(2)}',
+                            ? '- R\$ ${currencyFormatter.format(valor.abs())}'
+                            : 'R\$ ${currencyFormatter.format(valor)}',
                       ),
                       subtitle:
                           Text(DateFormat.yMMMMEEEEd('pt_BR').format(data)),
@@ -318,7 +326,7 @@ class EconomiesScreen extends StatelessWidget {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    'R\$ ${totalEconomizado.toStringAsFixed(2)}',
+                                    currencyFormatter.format(totalEconomizado),
                                     style: const TextStyle(
                                       fontSize: 26,
                                       fontWeight: FontWeight.bold,
@@ -388,7 +396,7 @@ class EconomiesScreen extends StatelessWidget {
                                 children: [
                                   FittedBox(
                                     child: Text(
-                                      'R\$ ${valor.toStringAsFixed(2)} / R\$ ${valorDesejado.toStringAsFixed(2)}',
+                                      '${currencyFormatter.format(valor)} / ${currencyFormatter.format(valorDesejado)}',
                                       style: TextStyle(
                                         fontSize: 20,
                                         fontFamily: 'Rubik',

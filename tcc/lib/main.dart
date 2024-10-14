@@ -59,8 +59,8 @@ class _FinanceiroAppState extends State<FinanceiroApp> {
       ),
       initialRoute: AppRoutes.HOME,
       routes: {
-        AppRoutes.HOME: (ctx) => ScreenTabs(),
-        AppRoutes.INICIAL: (ctx) => ScreenLogin(),
+        AppRoutes.HOME: (ctx) => ScreenLogin(),
+        AppRoutes.INICIAL: (ctx) => ScreenTabs(),
         AppRoutes.REGISTRO: (ctx) => const ScreenRegister(),
       },
     );

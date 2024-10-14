@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:tcc/screens/screen_categories_gasto.dart';
+import 'package:tcc/screens/screen_payments.dart';
 
 class TransactionFormGasto extends StatefulWidget {
   final ValueNotifier<Map<String, double>> balanceNotifier;
@@ -199,7 +201,7 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
   FaIcon defaultIcon = FaIcon(FontAwesomeIcons.question);
 
   bool isParcelado = false;
-  int? _selectedParcelas; 
+  int? _selectedParcelas;
   Stream<QuerySnapshot> _getFutureTransactionsStream() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -224,6 +226,34 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
   void initState() {
     super.initState();
     _loadInfo();
+  }
+
+  void _openCategorySelection() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SelectGastoCategoryScreen(
+          onCategorySelected: (category, icon) {
+            setState(() {
+              _selectedCategory = category;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  void _openPaymentMethodSelection() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SelectPaymentMethodScreen(
+          onPaymentMethodSelected: (method, icon) {
+            setState(() {
+              _selectedPayment = method;
+            });
+          },
+        ),
+      ),
+    );
   }
 
   void _processarTransacoesFuturas() {
@@ -291,7 +321,7 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
             user.uid,
             "$description (Parcela ${i + 1}/$_selectedParcelas)",
             category,
-            "futura", 
+            "futura",
             parcelaValue,
             currentDate,
             imagem,
@@ -306,7 +336,7 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
           user.uid,
           description,
           category,
-          isFutureTransaction ? "futura" : "gasto", 
+          isFutureTransaction ? "futura" : "gasto",
           value,
           _selectedDate,
           imagem,
@@ -475,267 +505,339 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
     final avaliableWidth = mediaQuery.size.width;
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: const Color.fromARGB(255, 230, 248, 244),
+      backgroundColor: Theme.of(context).colorScheme.primary,
       appBar: AppBar(
-        title: const Text("Adicionar gasto"),
-        backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+
+        title: const Text(
+          "Adicionar gasto",
+          style: TextStyle(
+              fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+        ),
+        backgroundColor: Theme.of(context).colorScheme.primary,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12.0),
-          child: Container(
-            padding: EdgeInsets.only(top: avaliableHeight * 0.025),
-            height: avaliableHeight,
-            child: Column(
-              children: [
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text("Descrição"),
-                ),
-                TextField(
-                  controller: _descricaoController,
-                  decoration: InputDecoration(
-                      labelText: "Descrição",
-                      fillColor: Colors.grey.shade200,
-                      filled: true,
-                      enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: const BorderSide(
-                            color: Colors.blue,
-                            width: 1.0,
-                          )),
-                      focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: const BorderSide(
-                            color: Colors.blue,
-                            width: 2.0,
-                          ))),
-                ),
-                SizedBox(
-                  height: avaliableWidth * 0.05,
-                ),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text("Valor (R\$)"),
-                ),
-                TextField(
-                  controller: _valorController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                      labelText: "Valor R\$",
-                      fillColor: Colors.grey.shade200,
-                      filled: true,
-                      enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: const BorderSide(
-                            color: Colors.blue,
-                            width: 1.0,
-                          )),
-                      focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: const BorderSide(
-                            color: Colors.blue,
-                            width: 2.0,
-                          ))),
-                ),
-                SizedBox(
-                  height: avaliableHeight * 0.05,
-                ),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text("Categoria"),
-                ),
-                Align(
-                  alignment: Alignment.center,
-                  child: DropdownButton<String>(
-                    hint: const Text("Selecione uma categoria"),
-                    value: _selectedCategory,
-                    items: _categories.keys.map((String key) {
-                      return DropdownMenuItem<String>(
-                        value: key,
-                        child: Row(
-                          children: [
-                            _categories[key]!,
-                            const SizedBox(width: 10),
-                            Text(key),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (String? value) {
-                      setState(() {
-                        _selectedCategory = value;
-                      });
-                    },
-                  ),
-                ),
-                SizedBox(
-                  height: avaliableHeight * 0.05,
-                ),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text("Meio de pagamento"),
-                ),
-                Align(
-                  alignment: Alignment.center,
-                  child: DropdownButton<String>(
-                    hint: const Text("Selecione um meio de pagamento"),
-                    value: _selectedPayment,
-                    items: _paymentMethods.keys.map((String key) {
-                      return DropdownMenuItem<String>(
-                        value: key,
-                        child: Row(
-                          children: [
-                            _paymentMethods[key] ?? defaultIcon,
-                            const SizedBox(width: 10),
-                            Text(key),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (String? value) {
-                      setState(() {
-                        _selectedPayment = value;
-                      });
-                    },
-                  ),
-                ),
-                SizedBox(
-                  height: avaliableHeight * 0.05,
-                ),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text("Data do pagamento"),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: avaliableHeight * 0.9,
+            ),
+            child: IntrinsicHeight(
+              child: Container(
+                padding: EdgeInsets.only(top: avaliableHeight * 0.025),
+                height: avaliableHeight * 0.92,
+                child: Column(
                   children: [
-                    Row(
-                      children: [
-                        TextButton(
-                          onPressed: _updateDate,
-                          child: const Text("Hoje"),
-                        ),
-                        TextButton(
-                          onPressed: _showDatePicker,
-                          child: const Text("Em Breve"),
-                        ),
-                      ],
-                    ),
-                    FittedBox(
+                    const Align(
+                      alignment: Alignment.centerLeft,
                       child: Text(
-                        (_selectedDate.year == DateTime.now().year &&
-                                _selectedDate.month == DateTime.now().month &&
-                                _selectedDate.day == DateTime.now().day)
-                            ? 'Hoje'
-                            : 'Data Selecionada: ${DateFormat('d/MMM/y', 'pt_BR').format(_selectedDate)}',
-                        style: const TextStyle(fontSize: 12),
-                        textAlign: TextAlign.center,
+                        "Descrição",
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white),
                       ),
                     ),
-                  ],
-                ),
-                SizedBox(
-                  height: avaliableHeight * 0.05,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("Parcelado"),
-                    Switch(
-                      value: isParcelado,
-                      onChanged: (bool newValue) {
-                        setState(() {
-                          isParcelado = newValue;
-                          if (!isParcelado) {
-                            _selectedParcelas =
-                                null; 
-                          }
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                if (isParcelado)
-                  Column(
-                    children: [
-                      const Text("Selecione o número de parcelas"),
-                      DropdownButton<int>(
-                        hint: const Text("Parcelas"),
-                        value: _selectedParcelas,
-                        items: List<int>.generate(12, (i) => i + 1)
-                            .map((int value) {
-                          return DropdownMenuItem<int>(
-                            value: value,
-                            child: Text("$value"),
-                          );
-                        }).toList(),
-                        onChanged: (int? newValue) {
-                          setState(() {
-                            _selectedParcelas = newValue;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                SizedBox(
-                  height: avaliableHeight * 0.05,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const FaIcon(
-                          FontAwesomeIcons.solidImage,
-                          color: Colors.blue,
+                    TextField(
+                      controller: _descricaoController,
+                      decoration: InputDecoration(
+                        labelText: 'Descrição',
+                        labelStyle:
+                            TextStyle(color: Color.fromRGBO(158, 185, 211, 1)),
+                        fillColor: Theme.of(context).colorScheme.tertiary,
+                        filled: true,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15.0),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 1.0,
+                          ),
                         ),
-                        MaterialButton(
-                          onPressed: _selectImage,
-                          child: const Text(
-                            "Anexar imagem",
-                            style: TextStyle(color: Colors.blue),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15.0),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 2.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: avaliableWidth * 0.02,
+                    ),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Valor (R\$)",
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white),
+                      ),
+                    ),
+                    TextField(
+                      controller: _valorController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Valor R\$',
+                        labelStyle:
+                            TextStyle(color: Color.fromRGBO(158, 185, 211, 1)),
+                        fillColor: Theme.of(context).colorScheme.tertiary,
+                        filled: true,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15.0),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 1.0,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15.0),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 2.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: avaliableHeight * 0.02,
+                    ),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Categoria",
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white),
+                      ),
+                    ),
+                    ListTile(
+                      leading: Icon(
+                        Icons.category,
+                        color: Colors.white,
+                      ),
+                      title: Text(
+                        _selectedCategory ?? "Selecionar Categoria",
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white),
+                      ),
+                      onTap: _openCategorySelection,
+                    ),
+                    SizedBox(
+                      height: avaliableHeight * 0.02,
+                    ),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Meio de pagamento",
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white),
+                      ),
+                    ),
+                    ListTile(
+                      leading: Icon(
+                        Icons.credit_card,
+                        color: Colors.white,
+                      ),
+                      title: Text(
+                        _selectedPayment ?? "Selecionar Meio de Pagamento",
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white),
+                      ),
+                      onTap: _openPaymentMethodSelection,
+                    ),
+                    SizedBox(
+                      height: avaliableHeight * 0.02,
+                    ),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Data do pagamento",
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white),
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            TextButton(
+                              onPressed: _updateDate,
+                              child: const Text(
+                                "Hoje",
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _showDatePicker,
+                              child: const Text(
+                                "Em Breve",
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                        FittedBox(
+                          child: Text(
+                            (_selectedDate.year == DateTime.now().year &&
+                                    _selectedDate.month ==
+                                        DateTime.now().month &&
+                                    _selectedDate.day == DateTime.now().day)
+                                ? 'Hoje'
+                                : 'Data Selecionada: ${DateFormat('d/MMM/y', 'pt_BR').format(_selectedDate)}',
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white),
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       ],
                     ),
-                    if (!imageExists)
-                      const Text(
-                        "Nenhuma imagem selecionada",
-                        style: TextStyle(fontSize: 12),
-                      )
-                    else
-                      FittedBox(
-                        child: InkWell(
-                          onTap: _showImagePopup,
-                          child: const Text('Ver imagem anexada'),
+                    SizedBox(
+                      height: avaliableHeight * 0.02,
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Parcelado",
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white),
                         ),
+                        Switch(
+                          activeColor: Colors.green,
+                          value: isParcelado,
+                          onChanged: (bool newValue) {
+                            setState(() {
+                              isParcelado = newValue;
+                              if (!isParcelado) {
+                                _selectedParcelas = null;
+                              }
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    if (isParcelado)
+                      Column(
+                        children: [
+                          const Text(
+                            "Selecione o número de parcelas",
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white),
+                          ),
+                          DropdownButton<int>(
+                            hint: const Text(
+                              "Parcelas",
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white),
+                            ),
+                            value: _selectedParcelas,
+                            items: List<int>.generate(12, (i) => i + 1)
+                                .map((int value) {
+                              return DropdownMenuItem<int>(
+                                value: value,
+                                child: Text("$value"),
+                              );
+                            }).toList(),
+                            onChanged: (int? newValue) {
+                              setState(() {
+                                _selectedParcelas = newValue;
+                              });
+                            },
+                          ),
+                        ],
                       ),
+                    SizedBox(
+                      height: avaliableHeight * 0.02,
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Column(
+                              children: [],
+                            ),
+                            const FaIcon(
+                              FontAwesomeIcons.solidImage,
+                              color: Colors.white,
+                            ),
+                            MaterialButton(
+                              onPressed: _selectImage,
+                              child: const Text(
+                                "Anexar imagem",
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (imageExists)
+                          FittedBox(
+                            child: InkWell(
+                              onTap: _showImagePopup,
+                              child: const Text('Ver imagem anexada'),
+                            ),
+                          ),
+                      ],
+                    ),
+                    Spacer(),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      Theme.of(context).colorScheme.tertiary,
+                                  elevation: 10,
+                                  fixedSize: Size.fromHeight(50)),
+                              onPressed: _submitFormGasto,
+                              child: const Text(
+                                "Adicionar gasto",
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
-      ),
-      bottomNavigationBar: Container(
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          bottom: mediaQuery.viewInsets.bottom + 20,
-        ),
-        child: ElevatedButton(
-          onPressed: _submitFormGasto,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            padding: EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          child: const Text(
-            "Nova transação",
-            style: TextStyle(fontSize: 18, color: Colors.white),
           ),
         ),
       ),

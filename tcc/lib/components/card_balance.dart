@@ -1,6 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+final NumberFormat currencyFormatter = NumberFormat.currency(
+  locale: 'pt_BR',
+  symbol: 'R\$',
+  decimalDigits: 2,
+);
+
+final NumberFormat numberFormatter = NumberFormat.decimalPattern('pt_BR');
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -132,7 +141,7 @@ class _CardBalanceState extends State<CardBalance> {
                                   fontWeight: FontWeight.bold),
                             ),
                             Text(
-                              "R\$ ${saldoValue.toStringAsFixed(2)}",
+                              currencyFormatter.format(saldoValue),
                               style: const TextStyle(
                                   fontSize: 24,
                                   color: Colors.white,
@@ -154,7 +163,7 @@ class _CardBalanceState extends State<CardBalance> {
                                   fontWeight: FontWeight.bold),
                             ),
                             Text(
-                              "R\$ ${ganhoValue.toStringAsFixed(2)}",
+                              currencyFormatter.format(ganhoValue),
                               style: const TextStyle(
                                   color: Color.fromARGB(255, 90, 204, 94),
                                   fontSize: 20,
@@ -176,7 +185,7 @@ class _CardBalanceState extends State<CardBalance> {
                                   fontWeight: FontWeight.bold),
                             ),
                             Text(
-                              "R\$ ${gastoValue.toStringAsFixed(2)}",
+                              currencyFormatter.format(gastoValue),
                               style: const TextStyle(
                                   color: Color.fromARGB(255, 244, 111, 101),
                                   fontSize: 20,
