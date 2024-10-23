@@ -3,22 +3,22 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:image_picker/image_picker.dart'; 
+import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
-class TransactionFormCofrinho extends StatefulWidget {
+class TransactionFormEconomias extends StatefulWidget {
   @override
-  _TransactionFormCofrinhoState createState() =>
-      _TransactionFormCofrinhoState();
+  _TransactionFormEconomiasState createState() =>
+      _TransactionFormEconomiasState();
 }
 
-class _TransactionFormCofrinhoState extends State<TransactionFormCofrinho> {
+class _TransactionFormEconomiasState extends State<TransactionFormEconomias> {
   final TextEditingController _valorController = TextEditingController();
   final TextEditingController _descricaoController = TextEditingController();
   final TextEditingController _valorDesejadoController =
       TextEditingController();
   DateTime _selectedDate = DateTime.now();
-  File? _selectedImage; 
+  File? _selectedImage;
 
   Future<void> _pickImage() async {
     final ImagePicker _picker = ImagePicker();
@@ -86,11 +86,10 @@ class _TransactionFormCofrinhoState extends State<TransactionFormCofrinho> {
       resizeToAvoidBottomInset: false,
       backgroundColor: Theme.of(context).colorScheme.primary,
       appBar: AppBar(
-                foregroundColor: Colors.white,
-
+        foregroundColor: Colors.white,
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: const Text(
-          'Adicionar ao Cofrinho',
+          'Adicionar às economias',
           style: TextStyle(color: Colors.white),
         ),
       ),

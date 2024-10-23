@@ -96,7 +96,7 @@ class FirestoreService {
   }
 }
 
-void _showChoiceDialog({
+void _showActionSheet({
   required BuildContext context,
   required String uid,
   required String docID,
@@ -104,46 +104,61 @@ void _showChoiceDialog({
   required String tipo,
   required String descricao,
 }) {
-  showDialog(
+  showModalBottomSheet(
     context: context,
     builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text("Escolha uma opção"),
-        content: const Text("Deseja editar ou remover esta transação?"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _showEditDialog(
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.edit),
+              title: Text(
+                'Editar',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _showEditDialog(
                   context: context,
                   uid: uid,
                   docID: docID,
                   tipo: tipo,
                   descricao: descricao,
-                  valor: valor);
-            },
-            child: const Text("Editar"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _showRemoveDialog(
-                context: context,
-                uid: uid,
-                docID: docID,
-                valor: valor,
-                tipo: tipo,
-              );
-            },
-            child: const Text("Remover"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: const Text("Cancelar"),
-          ),
-        ],
+                  valor: valor,
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete),
+              title: Text(
+                'Remover',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _showRemoveDialog(
+                  context: context,
+                  uid: uid,
+                  docID: docID,
+                  valor: valor,
+                  tipo: tipo,
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.cancel),
+              title: Text(
+                'Cancelar',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
       );
     },
   );
@@ -161,10 +176,6 @@ void _showEditDialog({
   final valueController = TextEditingController(text: valor.toStringAsFixed(2));
 
   FirestoreService firestoreService = FirestoreService();
-  final mediaQuery = MediaQuery.of(context);
-  final avaliableHeight = mediaQuery.size.height -
-      mediaQuery.padding.top -
-      mediaQuery.padding.bottom;
 
   showDialog(
     context: context,
@@ -172,7 +183,7 @@ void _showEditDialog({
       return AlertDialog(
         title: const Text("Editar Transação"),
         content: SizedBox(
-          height: avaliableHeight * 0.15,
+          height: 150,
           child: Column(
             children: [
               TextField(
@@ -225,38 +236,53 @@ void _showRemoveDialog({
 }) {
   FirestoreService firestoreService = FirestoreService();
 
-  showDialog(
+  showModalBottomSheet(
     context: context,
     builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text("Remover Transação"),
-        content: const Text("Tem certeza que deseja remover esta transação?"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              firestoreService
-                  .removeTransacao(uid, docID, valor, tipo)
-                  .then((_) {
-                Navigator.of(context).pop();
-              });
-            },
-            child: const Text("Remover"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: const Text("Cancelar"),
-          ),
-        ],
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Remover Transação",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text("Tem certeza que deseja remover esta transação?"),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    firestoreService
+                        .removeTransacao(uid, docID, valor, tipo)
+                        .then((_) {
+                      Navigator.of(context).pop();
+                    });
+                  },
+                  child: const Text("Remover"),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text("Cancelar"),
+                ),
+              ],
+            ),
+          ],
+        ),
       );
     },
   );
 }
 
-class TransactionList extends StatelessWidget {
+class TransactionList extends StatefulWidget {
   const TransactionList();
 
+  @override
+  State<TransactionList> createState() => _TransactionListState();
+}
+
+class _TransactionListState extends State<TransactionList> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -316,7 +342,7 @@ class TransactionList extends StatelessWidget {
 
                   return InkWell(
                     onTap: () {
-                      _showChoiceDialog(
+                      _showActionSheet(
                           context: context,
                           uid: user.uid,
                           docID: docID,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:tcc/components/appbar_cofrinho.dart';
 import 'package:tcc/screens/screen_economies.dart';
 import 'package:tcc/screens/screen_main.dart';
 import 'package:tcc/screens/screen_reports.dart';

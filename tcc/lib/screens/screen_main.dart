@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:tcc/components/appbar_customized.dart';
 import 'package:tcc/components/card_balance.dart';
-import 'package:tcc/components/transaction_form_cofrinho.dart';
+import 'package:tcc/components/transaction_form_economias.dart';
 import 'package:tcc/components/transaction_form_ganho.dart';
 import 'package:tcc/components/transaction_form_gasto.dart';
 import 'package:tcc/components/transaction_list.dart';
@@ -56,7 +55,7 @@ class _ScreenMainState extends State<ScreenMain> {
   void _openTransactionFormModalCofrinho() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => TransactionFormCofrinho(),
+        builder: (context) => TransactionFormEconomias(),
       ),
     );
   }
@@ -166,7 +165,7 @@ class _ScreenMainState extends State<ScreenMain> {
             shape: const CircleBorder(),
             backgroundColor: Colors.orange,
             child: const FaIcon(FontAwesomeIcons.piggyBank),
-            label: "Cofrinho",
+            label: "Economias",
             onTap: _openTransactionFormModalCofrinho,
           ),
         ],

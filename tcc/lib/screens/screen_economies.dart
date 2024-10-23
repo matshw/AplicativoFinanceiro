@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:tcc/components/appbar_cofrinho.dart';
 
 final NumberFormat currencyFormatter = NumberFormat.currency(
   locale: 'pt_BR',
@@ -95,7 +94,7 @@ class EconomiesScreen extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Adicionar valor ao investimento'),
+          title: const Text('Adicionar valor à economia'),
           content: TextField(
             controller: valorController,
             keyboardType: TextInputType.number,
@@ -225,7 +224,7 @@ class EconomiesScreen extends StatelessWidget {
             final List historico = data['historico'] ?? [];
 
             return AlertDialog(
-              title: const Text('Histórico de investimentos'),
+              title: const Text('Histórico de economias'),
               content: Container(
                 height: 200,
                 width: 300,
@@ -238,8 +237,8 @@ class EconomiesScreen extends StatelessWidget {
                     return ListTile(
                       title: Text(
                         valor < 0
-                            ? '- R\$ ${currencyFormatter.format(valor.abs())}'
-                            : 'R\$ ${currencyFormatter.format(valor)}',
+                            ? '- ${currencyFormatter.format(valor.abs())}'
+                            : ' ${currencyFormatter.format(valor)}',
                       ),
                       subtitle:
                           Text(DateFormat.yMMMMEEEEd('pt_BR').format(data)),

@@ -47,7 +47,6 @@ class FirestoreService {
         'meioPagamento': meioPagamento,
       });
     } catch (e) {
-      print("Erro ao adicionar transação: $e");
     }
   }
 
@@ -76,7 +75,6 @@ class FirestoreService {
         });
       }
     } catch (e) {
-      print("Erro ao atualizar informações: $e");
     }
   }
 
@@ -92,7 +90,7 @@ class FirestoreService {
         return {'gastoValue': 0.0, 'saldoValue': 0.0};
       }
     } catch (e) {
-      print("Erro ao obter informações: $e");
+
       return {'gastoValue': 0.0, 'saldoValue': 0.0};
     }
   }
@@ -420,7 +418,7 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
     XFile? file = await imagePicker.pickImage(source: ImageSource.gallery);
 
     if (file == null) {
-      print("Nenhuma imagem selecionada.");
+
       return;
     }
 
@@ -437,9 +435,7 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
         imagem = newImageURL;
         imageExists = true;
       });
-      print("Imagem carregada com sucesso: $newImageURL");
     } catch (e) {
-      print("Erro ao carregar imagem: $e");
     }
   }
 

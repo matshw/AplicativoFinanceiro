@@ -138,7 +138,6 @@ class _ScreenLoginState extends State<ScreenLogin> {
     if (user != null) {
       Navigator.pushNamed(context, "/inicial");
     } else {
-      print("Houve um erro");
     }
   }
 }

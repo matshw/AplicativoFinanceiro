@@ -43,14 +43,11 @@ class FutureTransactionList extends StatelessWidget {
         });
 
         await _firestoreService.updateInfo(uid, valor, -valor, 'gasto');
-        print("Transação marcada como paga.");
       }
-    } catch (e) {
-      print("Erro ao marcar como pago: $e");
-    }
+    } catch (e) {}
   }
 
-  void _showChoiceDialog({
+  void _showChoiceModalBottomSheet({
     required BuildContext context,
     required String uid,
     required String docID,
@@ -59,60 +56,81 @@ class FutureTransactionList extends StatelessWidget {
     required String descricao,
     required DateTime data,
   }) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.white,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Escolha uma opção"),
-          content: const Text("Deseja editar, remover ou marcar como pago?"),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _showEditDialog(
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(
+                  Icons.edit,
+                ),
+                title: const Text('Editar',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showEditDialog(
                     context: context,
                     uid: uid,
                     docID: docID,
                     tipo: tipo,
                     descricao: descricao,
-                    valor: valor);
-              },
-              child: const Text("Editar"),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _showRemoveDialog(
-                  context: context,
-                  uid: uid,
-                  docID: docID,
-                  valor: valor,
-                  tipo: tipo,
-                  data: data,
-                );
-              },
-              child: const Text("Remover"),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _markAsPaid(
-                  uid: uid,
-                  docID: docID,
-                  valor: valor,
-                  tipo: tipo,
-                  data: data,
-                );
-              },
-              child: const Text("Pago"),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text("Cancelar"),
-            ),
-          ],
+                    valor: valor,
+                  );
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete),
+                title: const Text('Remover',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showRemoveDialog(
+                    context: context,
+                    uid: uid,
+                    docID: docID,
+                    valor: valor,
+                    tipo: tipo,
+                    data: data,
+                  );
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.check_circle,
+                ),
+                title: const Text('Pago',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _markAsPaid(
+                    uid: uid,
+                    docID: docID,
+                    valor: valor,
+                    tipo: tipo,
+                    data: data,
+                  );
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.cancel,
+                ),
+                title: const Text('Cancelar',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
         );
       },
     );
@@ -283,7 +301,7 @@ class FutureTransactionList extends StatelessWidget {
 
                   return InkWell(
                     onTap: () {
-                      _showChoiceDialog(
+                      _showChoiceModalBottomSheet(
                         context: context,
                         uid: user.uid,
                         docID: docID,

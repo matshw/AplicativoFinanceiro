@@ -41,7 +41,6 @@ class FirestoreService {
         return {'ganhoValue': 0.0, 'saldoValue': 0.0, 'gastoValue': 0.0};
       }
     } catch (e) {
-      print("Erro ao obter informações: $e");
       return {'ganhoValue': 0.0, 'saldoValue': 0.0, 'gastoValue': 0.0};
     }
   }

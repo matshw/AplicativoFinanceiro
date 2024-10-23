@@ -30,6 +30,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Map<String, List<Map<String, dynamic>>> gastoTransactions = {};
   Map<String, double> ganhoCategorySums = {};
   Map<String, double> gastoCategorySums = {};
+  Map<String, double> pagamentoCategorySums =
+      {}; 
+  Map<String, List<Map<String, dynamic>>> pagamentoTransactions =
+      {};
   double totalGanhos = 0.0;
   double totalGastos = 0.0;
 
@@ -52,6 +56,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
     'Presentes': Colors.red,
     'Educação': Colors.cyan,
     'Outros': Colors.grey,
+  };
+
+  final Map<String, Color> pagamentoColors = {
+    'Dinheiro': Colors.green,
+    'Cartão de Crédito': Colors.blue,
+    'Cartão de Débito': Colors.orange,
+    'Transferência': Colors.red,
+    'Pix': Colors.purple,
+    'Boleto': Colors.yellow,
   };
 
   void _selectMonth(BuildContext context) async {
@@ -152,8 +165,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
       Map<String, List<Map<String, dynamic>>> ganhos = {};
       Map<String, List<Map<String, dynamic>>> gastos = {};
+      Map<String, List<Map<String, dynamic>>> pagamentos = {};
       Map<String, double> ganhoSumByCategory = {};
       Map<String, double> gastoSumByCategory = {};
+      Map<String, double> pagamentoSumByCategory = {};
       double totalGanhosTemp = 0.0;
       double totalGastosTemp = 0.0;
 
@@ -174,6 +189,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
               (gastoSumByCategory[categoria] ?? 0) + valor;
           gastos[categoria] = gastos[categoria] ?? [];
           gastos[categoria]?.add(transacao);
+
+          String meioPagamento = transacao['meioPagamento'] ?? 'Outros';
+          pagamentoSumByCategory[meioPagamento] =
+              (pagamentoSumByCategory[meioPagamento] ?? 0) + valor;
+          pagamentos[meioPagamento] = pagamentos[meioPagamento] ?? [];
+          pagamentos[meioPagamento]?.add(transacao);
         }
       }
 
@@ -182,6 +203,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
         gastoTransactions = gastos;
         ganhoCategorySums = ganhoSumByCategory;
         gastoCategorySums = gastoSumByCategory;
+        pagamentoTransactions = pagamentos;
+        pagamentoCategorySums = pagamentoSumByCategory;
         totalGanhos = totalGanhosTemp;
         totalGastos = totalGastosTemp;
       });
@@ -207,6 +230,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
           _buildPDFSection('Ganhos', ganhoCategorySums, ganhoTransactions),
           pw.SizedBox(height: 20),
           _buildPDFSection('Gastos', gastoCategorySums, gastoTransactions),
+          pw.SizedBox(height: 20),
+          _buildPDFSection('Meios de Pagamento', pagamentoCategorySums,
+              pagamentoTransactions),  
         ],
       ),
     );
@@ -244,13 +270,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  '${entry.key}: ${entry.value.length} transações',
+                  '${entry.key}: ${entry.value.length} ${entry.value.length == 1 ? "transação" : "transações"}',
                   style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                 ),
                 pw.SizedBox(height: 5),
                 ...entry.value.map((transacao) {
+                  String descricao = transacao['descricao'];
+                  double valor = transacao['valor'];
+
+                  String descricaoFinal =
+                      (transacao['tipo'] == 'gasto') ? '$descricao' : descricao;
+
                   return pw.Text(
-                      '${transacao['descricao']} - R\$ ${currencyFormatter.format(transacao['valor'])}');
+                      '$descricaoFinal -  ${currencyFormatter.format(valor)}');
                 }).toList(),
                 pw.SizedBox(height: 10),
               ],
@@ -300,6 +332,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
             _buildGanhoSection(),
             const SizedBox(height: 20),
             _buildGastoSection(),
+            const SizedBox(height: 20),
+            _buildPagamentoSection(), 
           ],
         ),
       ),
@@ -393,6 +427,52 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
+  Widget _buildPagamentoSection() {
+    return Column(
+      children: [
+        const Text(
+          'Meios de Pagamento',
+          style: TextStyle(
+              fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        Row(
+          children: [
+            Expanded(
+              flex: 1,
+              child: _buildPieChart(
+                  pagamentoCategorySums, pagamentoColors),
+            ),
+            Expanded(
+              flex: 1,
+              child: Column(
+                children: [
+                  const Text(
+                    'Total por Meios de Pagamento',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
+                  ),
+                  Text(
+                    currencyFormatter
+                        .format(totalGastos),
+                    style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _buildTransactionList(
+            'pagamento', pagamentoTransactions, pagamentoColors), 
+      ],
+    );
+  }
+
   Widget _buildPieChart(
       Map<String, double> categorySums, Map<String, Color> colors) {
     if (categorySums.isEmpty) {
@@ -408,10 +488,20 @@ class _ReportsScreenState extends State<ReportsScreen> {
     categorySums.forEach((category, totalValue) {
       sections.add(
         PieChartSectionData(
+          color: colors[category] ??
+              Colors.grey, 
+          value: totalValue,
+          title: '', 
+          radius: 60, 
+          titleStyle: const TextStyle(
+              color: Colors.transparent), 
+          badgeWidget: Container(
             color: colors[category],
-            value: totalValue,
-            title: currencyFormatter.format(totalValue),
-            titleStyle: TextStyle(color: Colors.white)),
+            padding: const EdgeInsets.all(5),
+            child: const SizedBox(),
+          ),
+          badgePositionPercentageOffset: 1.3, 
+        ),
       );
     });
 
@@ -420,7 +510,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
       child: PieChart(
         PieChartData(
           sections: sections,
-          centerSpaceRadius: 40,
+          centerSpaceRadius: 0, 
+          borderData: FlBorderData(show: false),
+          sectionsSpace: 0,
+          startDegreeOffset: 0, 
         ),
       ),
     );
@@ -466,28 +559,41 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   fontWeight: FontWeight.bold, color: Colors.white),
             ),
             subtitle: Text(
-              '${categoryTransactions.length} transações',
-              style: TextStyle(color: Colors.white),
+              '${categoryTransactions.length} ${categoryTransactions.length == 1 ? "transação" : "transações"}',
+              style: const TextStyle(color: Colors.white),
             ),
             tilePadding: EdgeInsets.zero,
             childrenPadding: EdgeInsets.zero,
-            collapsedShape: RoundedRectangleBorder(
+            collapsedShape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.zero,
             ),
-            shape: RoundedRectangleBorder(
+            shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.zero,
             ),
             children: categoryTransactions.map((transaction) {
+              String descricao = transaction['descricao'];
+              double valor = transaction['valor'];
+              DateTime data = transaction['data'].toDate();
+
+              String? meioPagamento;
+              if (tipo == 'gasto') {
+                meioPagamento = transaction['meioPagamento'] ?? 'N/A';
+              }
+
               return ListTile(
-                title: Text(transaction['descricao'],
-                    style: TextStyle(color: Colors.white, fontSize: 16)),
+                title: Text(
+                  tipo == 'gasto'
+                      ? '$descricao - $meioPagamento'
+                      : descricao, 
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
                 subtitle: Text(
-                  DateFormat('dd/MM/yyyy').format(transaction['data'].toDate()),
-                  style: TextStyle(color: Colors.white, fontSize: 16),
+                  DateFormat('dd/MM/yyyy').format(data),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
                 trailing: Text(
-                  currencyFormatter.format(transaction['valor']),
-                  style: TextStyle(color: Colors.white, fontSize: 16),
+                  currencyFormatter.format(valor),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               );
             }).toList(),

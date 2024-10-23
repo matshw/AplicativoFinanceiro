@@ -138,7 +138,6 @@ class _ScreenRegisterState extends State<ScreenRegister> {
     if (user != null) {
       Navigator.pushNamed(context, "/");
     } else {
-      print("Houve um erro");
     }
   }
 }
