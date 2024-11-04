@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:tcc/components/card_balance.dart';
+import 'package:tcc/components/transaction_form_assinatura.dart';
 import 'package:tcc/components/transaction_form_economias.dart';
 import 'package:tcc/components/transaction_form_ganho.dart';
 import 'package:tcc/components/transaction_form_gasto.dart';
@@ -76,6 +77,16 @@ class _ScreenMainState extends State<ScreenMain> {
       isScrollControlled: true,
       builder: (BuildContext context) {
         return TransactionFormGasto(balanceNotifier, _addTransacao);
+      },
+    );
+  }
+
+  void _openTransactionFormModalAssinatura() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return TransactionFormAssinatura();
       },
     );
   }
@@ -167,6 +178,13 @@ class _ScreenMainState extends State<ScreenMain> {
             child: const FaIcon(FontAwesomeIcons.piggyBank),
             label: "Economias",
             onTap: _openTransactionFormModalCofrinho,
+          ),
+          SpeedDialChild(
+            shape: const CircleBorder(),
+            backgroundColor: Colors.blueAccent,
+            child: const FaIcon(FontAwesomeIcons.clipboard),
+            label: "Assinaturas",
+            onTap: _openTransactionFormModalAssinatura,
           ),
         ],
       ),

@@ -630,7 +630,7 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
                     const Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        "Meio de pagamento",
+                        "Forma de pagamento",
                         style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
@@ -643,7 +643,7 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
                         color: Colors.white,
                       ),
                       title: Text(
-                        _selectedPayment ?? "Selecionar Meio de Pagamento",
+                        _selectedPayment ?? "Selecionar Forma de Pagamento",
                         style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,

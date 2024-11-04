@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:tcc/screens/screen_budget.dart';
 import 'package:tcc/screens/screen_economies.dart';
 import 'package:tcc/screens/screen_main.dart';
 import 'package:tcc/screens/screen_reports.dart';
@@ -29,6 +30,10 @@ class _ScreenTabsState extends State<ScreenTabs> {
     {
       'title': "Relatórios",
       'screen': ReportsScreen(),
+    },
+    {
+      'title': "Orçamento",
+      'screen': ScreenBudget(),
     },
   ];
 
@@ -69,9 +74,13 @@ class _ScreenTabsState extends State<ScreenTabs> {
             label: "Economias",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.broken_image_outlined),
+            icon: Icon(Icons.receipt),
             label: "Relatórios",
           ),
+          BottomNavigationBarItem(
+            icon: Icon(FontAwesomeIcons.fileInvoiceDollar),
+            label: "Orçamento",
+          )
         ],
       ),
     );

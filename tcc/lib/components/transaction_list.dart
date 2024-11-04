@@ -42,7 +42,7 @@ class FirestoreService {
         .doc(docID)
         .get();
     if (docSnapshot.exists) {
-      double oldValor = docSnapshot['valor'] ?? 0.0;
+double oldValor = (docSnapshot['valor'] ?? 0.0).toDouble();
       difference = valor - oldValor;
     }
 
@@ -335,7 +335,7 @@ class _TransactionListState extends State<TransactionList> {
                   Map<String, dynamic> data =
                       document.data() as Map<String, dynamic>;
                   String transacaoDescricao = data['descricao'];
-                  double transacaoValor = data['valor'];
+double transacaoValor = (data['valor'] ?? 0).toDouble();
                   String tipo = data['tipo'];
                   Timestamp dateTimestamp = data['data'];
                   DateTime date = dateTimestamp.toDate();

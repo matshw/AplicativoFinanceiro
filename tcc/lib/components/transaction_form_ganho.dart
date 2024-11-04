@@ -181,8 +181,7 @@ class _TransactionFormState extends State<TransactionForm> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.primary,
       appBar: AppBar(
-                foregroundColor: Colors.white,
-
+        foregroundColor: Colors.white,
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: const Text(
           "Adicionar Ganho",

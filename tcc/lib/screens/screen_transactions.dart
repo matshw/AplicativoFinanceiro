@@ -690,7 +690,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                       Map<String, dynamic> data =
                           document.data() as Map<String, dynamic>;
                       String transacaoDescricao = data['descricao'];
-                      double transacaoValor = data['valor'];
+                      double transacaoValor = (data['valor'] ?? 0.0).toDouble();
                       String tipo = data['tipo'];
                       String categoria =
                           data['categoria'] ?? 'Categoria não especificada';

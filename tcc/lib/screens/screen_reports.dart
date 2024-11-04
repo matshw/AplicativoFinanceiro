@@ -30,10 +30,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Map<String, List<Map<String, dynamic>>> gastoTransactions = {};
   Map<String, double> ganhoCategorySums = {};
   Map<String, double> gastoCategorySums = {};
-  Map<String, double> pagamentoCategorySums =
-      {}; 
-  Map<String, List<Map<String, dynamic>>> pagamentoTransactions =
-      {};
+  Map<String, double> pagamentoCategorySums = {};
+  Map<String, List<Map<String, dynamic>>> pagamentoTransactions = {};
   double totalGanhos = 0.0;
   double totalGastos = 0.0;
 
@@ -175,7 +173,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       for (var transacao in transacoes) {
         String categoria = transacao['categoria'];
         String tipo = transacao['tipo'];
-        double valor = transacao['valor'];
+        double valor = (transacao['valor'] ?? 0.0).toDouble();
 
         if (tipo == 'ganho') {
           totalGanhosTemp += valor;
@@ -232,7 +230,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           _buildPDFSection('Gastos', gastoCategorySums, gastoTransactions),
           pw.SizedBox(height: 20),
           _buildPDFSection('Meios de Pagamento', pagamentoCategorySums,
-              pagamentoTransactions),  
+              pagamentoTransactions),
         ],
       ),
     );
@@ -333,7 +331,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             const SizedBox(height: 20),
             _buildGastoSection(),
             const SizedBox(height: 20),
-            _buildPagamentoSection(), 
+            _buildPagamentoSection(),
           ],
         ),
       ),
@@ -439,8 +437,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           children: [
             Expanded(
               flex: 1,
-              child: _buildPieChart(
-                  pagamentoCategorySums, pagamentoColors),
+              child: _buildPieChart(pagamentoCategorySums, pagamentoColors),
             ),
             Expanded(
               flex: 1,
@@ -454,8 +451,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         color: Colors.white),
                   ),
                   Text(
-                    currencyFormatter
-                        .format(totalGastos),
+                    currencyFormatter.format(totalGastos),
                     style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -468,7 +464,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         ),
         const SizedBox(height: 10),
         _buildTransactionList(
-            'pagamento', pagamentoTransactions, pagamentoColors), 
+            'pagamento', pagamentoTransactions, pagamentoColors),
       ],
     );
   }
@@ -488,19 +484,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
     categorySums.forEach((category, totalValue) {
       sections.add(
         PieChartSectionData(
-          color: colors[category] ??
-              Colors.grey, 
+          color: colors[category] ?? Colors.grey,
           value: totalValue,
-          title: '', 
-          radius: 60, 
-          titleStyle: const TextStyle(
-              color: Colors.transparent), 
+          title: '',
+          radius: 60,
+          titleStyle: const TextStyle(color: Colors.transparent),
           badgeWidget: Container(
             color: colors[category],
             padding: const EdgeInsets.all(5),
             child: const SizedBox(),
           ),
-          badgePositionPercentageOffset: 1.3, 
+          badgePositionPercentageOffset: 1.3,
         ),
       );
     });
@@ -510,10 +504,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
       child: PieChart(
         PieChartData(
           sections: sections,
-          centerSpaceRadius: 0, 
+          centerSpaceRadius: 0,
           borderData: FlBorderData(show: false),
           sectionsSpace: 0,
-          startDegreeOffset: 0, 
+          startDegreeOffset: 0,
         ),
       ),
     );
@@ -572,7 +566,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
             children: categoryTransactions.map((transaction) {
               String descricao = transaction['descricao'];
-              double valor = transaction['valor'];
+              double valor = (transaction['valor'] ?? 0.0).toDouble();
               DateTime data = transaction['data'].toDate();
 
               String? meioPagamento;
@@ -582,9 +576,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
               return ListTile(
                 title: Text(
-                  tipo == 'gasto'
-                      ? '$descricao - $meioPagamento'
-                      : descricao, 
+                  tipo == 'gasto' ? '$descricao - $meioPagamento' : descricao,
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
                 subtitle: Text(
