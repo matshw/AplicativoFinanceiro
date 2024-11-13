@@ -28,12 +28,12 @@ class _ScreenTabsState extends State<ScreenTabs> {
       'screen': EconomiesScreen(),
     },
     {
-      'title': "Relatórios",
-      'screen': ReportsScreen(),
+      'title': "Metas",
+      'screen': GoalsScreen(),
     },
     {
-      'title': "Orçamento",
-      'screen': ScreenBudget(),
+      'title': "Relatórios",
+      'screen': ReportsScreen(),
     },
   ];
 
@@ -63,7 +63,7 @@ class _ScreenTabsState extends State<ScreenTabs> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
-            label: "Inicio",
+            label: "Início",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.attach_money),
@@ -74,13 +74,13 @@ class _ScreenTabsState extends State<ScreenTabs> {
             label: "Economias",
           ),
           BottomNavigationBarItem(
+            icon: Icon(FontAwesomeIcons.fileInvoiceDollar),
+            label: "Metas",
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.receipt),
             label: "Relatórios",
           ),
-          // BottomNavigationBarItem(
-          //   icon: Icon(FontAwesomeIcons.fileInvoiceDollar),
-          //   label: "Orçamento",
-          // )
         ],
       ),
     );

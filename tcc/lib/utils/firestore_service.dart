@@ -2,6 +2,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  double _getDoubleValue(dynamic value) {
+    if (value is int) {
+      return value.toDouble();
+    } else if (value is double) {
+      return value;
+    } else {
+      return 0.0;
+    }
+  }
 
   Future<void> addTransacao(
     String uid,
@@ -26,7 +35,6 @@ class FirestoreService {
         'imagem': imagem ?? '',
       });
     } catch (e) {
-      print('Erro ao adicionar transação: $e');
     }
   }
 
@@ -39,15 +47,14 @@ class FirestoreService {
       DocumentSnapshot doc =
           await _firestore.collection('users').doc(uid).get();
 
-      double currentGanhoValue = doc['ganhoValue'] ?? 0.0;
-      double currentSaldoValue = doc['saldoValue'] ?? 0.0;
+      double currentGanhoValue = _getDoubleValue(doc['ganhoValue']);
+      double currentSaldoValue = _getDoubleValue(doc['saldoValue']);
 
       await _firestore.collection('users').doc(uid).update({
         'ganhoValue': currentGanhoValue + ganhoValue,
         'saldoValue': currentSaldoValue + saldoValue,
       });
     } catch (e) {
-      print("Erro ao atualizar informações: $e");
     }
   }
 
@@ -56,14 +63,15 @@ class FirestoreService {
       DocumentSnapshot doc =
           await _firestore.collection('users').doc(uid).get();
       if (doc.exists) {
-        double ganhoValue = doc['ganhoValue'] ?? 0.0;
-        double saldoValue = doc['saldoValue'] ?? 0.0;
+        double ganhoValue = _getDoubleValue(doc['ganhoValue']);
+        ;
+        double saldoValue = _getDoubleValue(doc['saldoValue']);
+        ;
         return {'ganhoValue': ganhoValue, 'saldoValue': saldoValue};
       } else {
         return {'ganhoValue': 0.0, 'saldoValue': 0.0};
       }
     } catch (e) {
-      print("Erro ao obter informações: $e");
       return {'ganhoValue': 0.0, 'saldoValue': 0.0};
     }
   }
@@ -95,7 +103,8 @@ class FirestoreService {
         .doc(docID)
         .get();
     if (docSnapshot.exists) {
-      double oldValor = docSnapshot['valor'] ?? 0.0;
+      double oldValor = _getDoubleValue(docSnapshot['valor']);
+      ;
       difference = valor - oldValor;
     }
 
@@ -158,7 +167,7 @@ class FirestoreService {
     DocumentSnapshot docSnapshot =
         await _firestore.collection('users').doc(uid).get();
     if (docSnapshot.exists) {
-      return docSnapshot['saldoValue'] ?? 0.0;
+      return _getDoubleValue(docSnapshot['saldoValue']);
     } else {
       return 0.0;
     }

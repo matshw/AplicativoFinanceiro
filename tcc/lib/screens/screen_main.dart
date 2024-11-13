@@ -1,48 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tcc/components/card_balance.dart';
 import 'package:tcc/components/transaction_form_economias.dart';
 import 'package:tcc/components/transaction_form_ganho.dart';
 import 'package:tcc/components/transaction_form_gasto.dart';
 import 'package:tcc/components/transaction_list.dart';
-import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:tcc/components/transaction_list_future.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io';
+import 'screen_infos.dart';
 
 class ScreenMain extends StatefulWidget {
-  const ScreenMain();
+  const ScreenMain({Key? key}) : super(key: key);
 
   @override
   State<ScreenMain> createState() => _ScreenMainState();
 }
 
 class _ScreenMainState extends State<ScreenMain> {
+  String _userName = 'Nome do Usuário';
+
   final ValueNotifier<Map<String, double>> balanceNotifier =
       ValueNotifier({'ganhoValue': 0.0, 'saldoValue': 0.0, 'gastoValue': 0.0});
-
-  @override
-  void initState() {
-    super.initState();
-    _loadInitialBalance();
-  }
-
-  // Carrega os valores iniciais do Firestore e atualiza balanceNotifier
-  Future<void> _loadInitialBalance() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final firestore = FirebaseFirestore.instance;
-    final doc = await firestore.collection('users').doc(user.uid).get();
-
-    if (doc.exists && doc.data() != null) {
-      balanceNotifier.value = {
-        'ganhoValue': doc.data()?['ganhoValue']?.toDouble() ?? 0.0,
-        'saldoValue': doc.data()?['saldoValue']?.toDouble() ?? 0.0,
-        'gastoValue': doc.data()?['gastoValue']?.toDouble() ?? 0.0,
-      };
-    }
-  }
 
   void _addTransacao(
       String descricao,
@@ -52,11 +36,13 @@ class _ScreenMainState extends State<ScreenMain> {
       DateTime dataRecebimento,
       String? imagem,
       String meioPagamento) {
-    if (tipo == 'ganho') {
-      _updateBalanceGanho(valor);
-    } else if (tipo == 'gasto') {
-      _updateBalanceGasto(valor);
-    }
+    setState(() {
+      if (tipo == 'ganho') {
+        _updateBalanceGanho(valor);
+      } else if (tipo == 'gasto') {
+        _updateBalanceGasto(valor);
+      }
+    });
   }
 
   void _updateBalanceGanho(double value) {
@@ -65,7 +51,6 @@ class _ScreenMainState extends State<ScreenMain> {
       'saldoValue': balanceNotifier.value['saldoValue']! + value,
       'gastoValue': balanceNotifier.value['gastoValue']!,
     };
-    _saveBalance();
   }
 
   void _updateBalanceGasto(double value) {
@@ -74,20 +59,6 @@ class _ScreenMainState extends State<ScreenMain> {
       'saldoValue': balanceNotifier.value['saldoValue']! - value,
       'ganhoValue': balanceNotifier.value['ganhoValue']!,
     };
-    _saveBalance();
-  }
-
-  // Atualiza os valores de saldo no Firestore
-  Future<void> _saveBalance() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final firestore = FirebaseFirestore.instance;
-    await firestore.collection('users').doc(user.uid).update({
-      'ganhoValue': balanceNotifier.value['ganhoValue'],
-      'saldoValue': balanceNotifier.value['saldoValue'],
-      'gastoValue': balanceNotifier.value['gastoValue'],
-    });
   }
 
   void _openTransactionFormModalCofrinho() {
@@ -107,7 +78,16 @@ class _ScreenMainState extends State<ScreenMain> {
       },
     );
   }
-
+void _openPersonalInfoScreen() async {
+  final newName = await Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (context) => PersonalInfoScreen(),
+    ),
+  );
+  if (newName != null) {
+    _updateUserName(newName);
+  }
+}
   void _openTransactionFormModalGasto() {
     showModalBottomSheet(
       context: context,
@@ -118,31 +98,151 @@ class _ScreenMainState extends State<ScreenMain> {
     );
   }
 
+  final ImagePicker _picker = ImagePicker();
+  String? _profileImageUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileImage();
+    _loadUserName();
+  }
+
+  Future<void> _loadProfileImage() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId != null) {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      setState(() {
+        _profileImageUrl = doc['profileImageUrl'];
+      });
+    }
+  }
+
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userName = prefs.getString('userName') ?? 'Nome do Usuário';
+    });
+  }
+
+  void _updateUserName(String newName) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userName = newName;
+    });
+    prefs.setString('userName', newName);
+  }
+
+  Future<void> _pickProfileImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      final file = File(pickedFile.path);
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+
+      if (userId != null) {
+        final storageRef =
+            FirebaseStorage.instance.ref().child('profileImages/$userId.jpg');
+        await storageRef.putFile(file);
+        final downloadUrl = await storageRef.getDownloadURL();
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .update({
+          'profileImageUrl': downloadUrl,
+        });
+
+        setState(() {
+          _profileImageUrl = downloadUrl;
+        });
+      }
+    }
+  }
+
+  void _signOut() async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.of(context).pushReplacementNamed('/login');
+  }
+
+  void _openDrawer() {
+    Scaffold.of(context).openDrawer();
+  }
+
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    final availableHeight = mediaQuery.size.height -
-        mediaQuery.padding.top -
-        mediaQuery.padding.bottom;
-
+    final avaliableHeight = mediaQuery.size.height - mediaQuery.padding.top;
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.secondary,
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+              ),
+              child: Column(
+                children: [
+                  GestureDetector(
+                    onTap: _pickProfileImage,
+                    child: CircleAvatar(
+                      radius: 40,
+                      backgroundImage: _profileImageUrl != null
+                          ? NetworkImage(_profileImageUrl!)
+                          : AssetImage('lib\assets\images\default-profile.png')
+                              as ImageProvider,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                   Text(_userName, style: TextStyle(color: Colors.white)),
+                ],
+              ),
+            ),
+            ListTile(
+              title: const Text('Informações Pessoais'),
+              onTap: _openPersonalInfoScreen,
+            ),
+            ListTile(
+              title: const Text('Sair'),
+              onTap: _signOut,
+            ),
+          ],
+        ),
+      ),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        leading: GestureDetector(
+          onTap: _openDrawer,
+          child: Container(
+            margin: EdgeInsets.fromLTRB(10, 0, 0, 0),
+            child: CircleAvatar(
+              backgroundImage: _profileImageUrl != null
+                  ? NetworkImage(_profileImageUrl!) as ImageProvider
+                  : const AssetImage('lib/assets/images/default-profile.png')
+                      as ImageProvider,
+            ),
+          ),
+        ),
+      ),
       body: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              height: availableHeight * 0.02,
+              height: avaliableHeight * 0.02,
             ),
-            // Usando o ValueListenableBuilder para observar as mudanças no balanceNotifier
-            ValueListenableBuilder<Map<String, double>>(
-              valueListenable: balanceNotifier,
-              builder: (context, balance, child) {
-                return CardBalance(balanceNotifier);
-              },
+            CardBalance(
+              _openTransactionFormModalGanho,
+              balanceNotifier.value['ganhoValue'] ?? 0.0,
+              balanceNotifier.value['saldoValue'] ?? 0.0,
+              balanceNotifier.value['gastoValue'] ?? 0.0,
             ),
             SizedBox(
-              height: availableHeight * 0.02,
+              height: avaliableHeight * 0.02,
             ),
             Padding(
               padding: const EdgeInsets.only(left: 10),
@@ -160,7 +260,7 @@ class _ScreenMainState extends State<ScreenMain> {
             ),
             const TransactionList(),
             SizedBox(
-              height: availableHeight * 0.02,
+              height: avaliableHeight * 0.02,
             ),
             Padding(
               padding: const EdgeInsets.only(left: 10),
@@ -181,7 +281,7 @@ class _ScreenMainState extends State<ScreenMain> {
         ),
       ),
       floatingActionButton: SpeedDial(
-        backgroundColor: const Color.fromARGB(255, 59, 66, 72),
+        backgroundColor: Color.fromARGB(255, 59, 66, 72),
         icon: FontAwesomeIcons.plus,
         foregroundColor: Colors.white,
         overlayOpacity: 0.4,

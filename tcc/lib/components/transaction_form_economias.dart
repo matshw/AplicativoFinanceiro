@@ -89,7 +89,7 @@ class _TransactionFormEconomiasState extends State<TransactionFormEconomias> {
         foregroundColor: Colors.white,
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: const Text(
-          'Adicionar às economias',
+          'Adicionar economia',
           style: TextStyle(color: Colors.white),
         ),
       ),
@@ -218,7 +218,7 @@ class _TransactionFormEconomiasState extends State<TransactionFormEconomias> {
                         fixedSize: Size.fromHeight(50)),
                     onPressed: _addInvestment,
                     child: const Text(
-                      'Adicionar ao Cofrinho',
+                      'Adicionar economia',
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,

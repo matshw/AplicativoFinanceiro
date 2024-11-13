@@ -273,6 +273,7 @@ class EconomiesScreen extends StatelessWidget {
     }
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.primary,
       body: Container(
         color: Theme.of(context).colorScheme.primary,
         child: Column(
@@ -296,13 +297,15 @@ class EconomiesScreen extends StatelessWidget {
                             .doc(user.uid)
                             .snapshots(),
                         builder: (context, snapshot) {
-                          if (!snapshot.hasData) {
+                          if (!snapshot.hasData ||
+                              snapshot.data?.data() == null) {
                             return const CircularProgressIndicator();
                           }
                           double totalEconomizado = 0.0;
                           var investments =
-                              snapshot.data!.data() as Map<String, dynamic>;
-                          if (investments.containsKey('valorTotal')) {
+                              snapshot.data!.data() as Map<String, dynamic>?;
+                          if (investments != null &&
+                              investments.containsKey('valorTotal')) {
                             totalEconomizado = investments['valorTotal'];
                           }
                           return Column(
@@ -313,7 +316,7 @@ class EconomiesScreen extends StatelessWidget {
                                 children: [
                                   const Text(
                                     'Total Economizado',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 22,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white,

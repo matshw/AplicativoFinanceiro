@@ -1,240 +1,178 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-final NumberFormat currencyFormatter = NumberFormat.currency(
-  locale: 'pt_BR',
-  symbol: 'R\$',
-  decimalDigits: 2,
-);
-
-class ScreenBudget extends StatefulWidget {
+class GoalsScreen extends StatefulWidget {
   @override
-  _ScreenBudgetState createState() => _ScreenBudgetState();
+  _GoalsScreenState createState() => _GoalsScreenState();
 }
 
-class _ScreenBudgetState extends State<ScreenBudget> {
+class _GoalsScreenState extends State<GoalsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final Map<String, FaIcon> _categories = {
+    'Comida': FaIcon(FontAwesomeIcons.burger),
+    'Roupas': FaIcon(FontAwesomeIcons.shirt),
+    'Lazer': FaIcon(FontAwesomeIcons.futbol),
+    'Transporte': FaIcon(FontAwesomeIcons.bicycle),
+    'Saúde': FaIcon(FontAwesomeIcons.suitcaseMedical),
+    'Presentes': FaIcon(FontAwesomeIcons.gift),
+    'Educação': FaIcon(FontAwesomeIcons.book),
+    'Beleza': FaIcon(FontAwesomeIcons.paintbrush),
+    'Emergência': FaIcon(FontAwesomeIcons.hospital),
+    'Reparos': FaIcon(FontAwesomeIcons.hammer),
+    'Streaming': FaIcon(FontAwesomeIcons.tv),
+    'Serviços': FaIcon(FontAwesomeIcons.clipboard),
+    'Tecnologia': FaIcon(FontAwesomeIcons.laptop),
+    'Outros': FaIcon(FontAwesomeIcons.circleQuestion),
+  };
+
+  Map<String, double> _goals = {};
+  Map<String, double> _expenses = {};
+  List<String> _activeCategories = [];
 
   @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      return const Center(child: Text('Erro: Usuário não autenticado.'));
+  void initState() {
+    super.initState();
+    checkAndResetGoals();
+    _fetchGoals();
+    _fetchExpenses();
+  }
+
+  Future<void> checkAndResetGoals() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final today = DateTime.now();
+    final firstDayThisMonth = DateTime(today.year, today.month, 1);
+    final firstDayNextMonth = DateTime(today.year, today.month + 1, 1);
+
+    final goalsRef =
+        _firestore.collection('users').doc(user.uid).collection('goals');
+    final currentGoalsDoc = await goalsRef.doc('current').get();
+
+    if (!currentGoalsDoc.exists || today.isAtSameMomentAs(firstDayThisMonth)) {
+      if (currentGoalsDoc.exists) {
+        await goalsRef.doc('archives').set({
+          '${today.year}-${today.month.toString().padLeft(2, '0')}':
+              currentGoalsDoc.data()
+        }, SetOptions(merge: true));
+      }
+
+      Map<String, dynamic> newGoals = {};
+      currentGoalsDoc.data()?.forEach((key, value) {
+        newGoals[key] = 0.0;
+      });
+      await goalsRef.doc('current').set(newGoals);
     }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gerenciar Assinaturas'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore
-            .collection('users')
-            .doc(user.uid)
-            .collection('assinaturas')
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return const Center(child: Text('Erro ao carregar assinaturas.'));
-          } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('Nenhuma assinatura encontrada.'));
-          }
-
-          final assinaturas = snapshot.data!.docs;
-
-          return ListView.builder(
-            itemCount: assinaturas.length,
-            itemBuilder: (context, index) {
-              final document = assinaturas[index];
-              final data = document.data() as Map<String, dynamic>;
-              final String nome = data['descricao'] ?? '';
-              final double valor = (data['valor'] ?? 0.0).toDouble();
-              final int periodo = data['periodo'] ?? 30;
-              final DateTime dataCriacao = data['data'] != null
-                  ? (data['data'] as Timestamp).toDate()
-                  : DateTime.now();
-
-              final String formattedDate = DateFormat('dd/MM/yyyy')
-                  .format(dataCriacao.add(Duration(days: periodo)));
-
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                elevation: 5,
-                child: ListTile(
-                  title: Text(
-                    nome,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Valor: ${currencyFormatter.format(valor)} - Vencimento: $formattedDate',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.more_vert),
-                    onPressed: () {
-                      _showActionSheet(document);
-                    },
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
   }
 
-  void _showActionSheet(DocumentSnapshot document) {
-    final data = document.data() as Map<String, dynamic>;
-    final String docID = document.id;
-    final String nome = data['descricao'] ?? '';
-    final double valor = (data['valor'] ?? 0.0).toDouble();
-    final String imagem = data['imagem'] ?? '';
-    final String formaPagamento = data['formaPagamento'] ?? 'N/A';
-    final String categoria = data['categoria'] ?? 'N/A';
-
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text(
-                'Editar',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showEditDialog(document);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.check_circle),
-              title: const Text(
-                'Marcar como Pago',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _markAsPaid(docID, data);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete),
-              title: const Text(
-                'Excluir',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _removeAssinatura(docID, valor);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.cancel),
-              title: const Text(
-                'Cancelar',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            if (imagem.isNotEmpty)
-              ListTile(
-                leading: const Icon(Icons.image),
-                title: const Text(
-                  'Ver imagem',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showImageDialog(imagem);
-                },
-              ),
-          ],
-        );
-      },
-    );
+  Future<void> _fetchGoals() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final goalsSnapshot = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('goals')
+          .doc('current')
+          .get();
+      if (goalsSnapshot.exists) {
+        setState(() {
+          _goals = Map<String, double>.from(goalsSnapshot.data()!);
+          _activeCategories = _goals.keys.toList();
+        });
+      }
+    }
   }
 
-  void _showImageDialog(String imageUrl) {
-    showDialog(
+  Future<void> _fetchExpenses() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final expensesSnapshot = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('transacao')
+          .get();
+      final expensesByCategory = <String, double>{};
+      for (var doc in expensesSnapshot.docs) {
+        final category = doc['categoria'];
+        final value = doc['valor'];
+        expensesByCategory[category] =
+            (expensesByCategory[category] ?? 0) + value;
+        if (!_activeCategories.contains(category)) {
+          _activeCategories.add(category);
+        }
+      }
+      setState(() {
+        _expenses = expensesByCategory;
+      });
+    }
+  }
+
+  void _addOrEditGoal(String category, double value) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('goals')
+          .doc('current')
+          .set({category: value}, SetOptions(merge: true));
+      setState(() {
+        _goals[category] = value;
+        if (!_activeCategories.contains(category)) {
+          _activeCategories.add(category);
+        }
+      });
+    }
+  }
+
+  void _removeGoal(String category) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('goals')
+          .doc('current')
+          .update({category: FieldValue.delete()});
+      setState(() {
+        _goals.remove(category);
+        if (!_expenses.containsKey(category)) {
+          _activeCategories.remove(category);
+        }
+      });
+    }
+  }
+
+  Future<void> _showGoalDialog(String category) async {
+    final controller =
+        TextEditingController(text: _goals[category]?.toString() ?? '');
+    await showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (context) {
         return AlertDialog(
-          title: const Text("Imagem da Assinatura"),
-          content: Image.network(imageUrl),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text("Fechar"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showEditDialog(DocumentSnapshot document) {
-    final data = document.data() as Map<String, dynamic>;
-    final String nome = data['descricao'] ?? '';
-    final double valor = (data['valor'] ?? 0.0).toDouble();
-    final String formaPagamento = data['formaPagamento'] ?? 'N/A';
-
-    TextEditingController nomeController = TextEditingController(text: nome);
-    TextEditingController valorController =
-        TextEditingController(text: valor.toString());
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Editar Assinatura'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nomeController,
-                decoration: const InputDecoration(labelText: 'Nome'),
-              ),
-              TextField(
-                controller: valorController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Valor (R\$)'),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  _updateAssinatura(
-                    document.id,
-                    nomeController.text,
-                    double.tryParse(valorController.text) ?? 0.0,
-                    formaPagamento,
-                  );
-                  Navigator.pop(context);
-                },
-                child: const Text('Salvar'),
-              ),
-            ],
+          title: Text("Definir meta para $category"),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(labelText: "Valor da Meta"),
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.of(context).pop();
               },
-              child: const Text('Cancelar'),
+              child: const Text("Cancelar"),
+            ),
+            TextButton(
+              onPressed: () {
+                final value = double.tryParse(controller.text) ?? 0.0;
+                _addOrEditGoal(category, value);
+                Navigator.of(context).pop();
+              },
+              child: const Text("Salvar"),
             ),
           ],
         );
@@ -242,94 +180,98 @@ class _ScreenBudgetState extends State<ScreenBudget> {
     );
   }
 
-  void _updateAssinatura(
-      String docID, String nome, double valor, String formaPagamento) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('assinaturas')
-        .doc(docID)
-        .update({
-      'descricao': nome,
-      'valor': valor,
-      'formaPagamento': formaPagamento,
-    });
+  void _selectCategoryForGoal() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Selecione uma Categoria"),
+          content: Container(
+            width: double.maxFinite,
+            child: ListView.builder(
+              itemCount: _categories.length,
+              itemBuilder: (context, index) {
+                String category = _categories.keys.elementAt(index);
+                FaIcon icon = _categories[category]!;
+                return ListTile(
+                  leading: icon,
+                  title: Text(category),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _showGoalDialog(category);
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
   }
 
-  void _removeAssinatura(String docID, double valor) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      body: Container(
+        color: Theme.of(context).colorScheme.primary,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 20),
+          child: ListView.builder(
+            itemCount: _activeCategories.length,
+            itemBuilder: (context, index) {
+              final category = _activeCategories[index];
+              final icon = _categories[category] ??
+                  FaIcon(FontAwesomeIcons.circleQuestion);
+              final goal = _goals[category] ?? 0.0;
+              final expense = _expenses[category] ?? 0.0;
+              final progress = (goal > 0) ? (expense / goal) : 0.0;
 
-    _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('assinaturas')
-        .doc(docID)
-        .delete();
-  }
-
-  void _markAsPaid(String docID, Map<String, dynamic> data) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    // Calcular o novo vencimento baseado no período
-    int periodo = data['periodo'] ?? 30; // Período atual da assinatura
-    DateTime novoVencimento = DateTime.now().add(Duration(days: periodo));
-
-    // Atualizar a data da assinatura e criar a transação
-    _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('assinaturas')
-        .doc(docID)
-        .update({
-      'data': Timestamp.fromDate(novoVencimento), // Atualiza a data
-    }).then((_) {
-      // Adicionar a transação ao histórico com categoria e meio de pagamento
-      _addTransaction(
-        nome: data['descricao'],
-        valor: data['valor'],
-        tipo: 'gasto',
-        vencimento: novoVencimento,
-        formaPagamento: data['formaPagamento'] ?? 'N/A',
-        categoria: data['categoria'] ?? 'N/A',
-      );
-      // Mostrar um feedback ao usuário
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Assinatura marcada como paga e vencimento atualizado.')),
-      );
-    }).catchError((error) {
-      print("Erro ao atualizar a assinatura: $error");
-    });
-  }
-
-  void _addTransaction({
-    required String nome,
-    required double valor,
-    required String tipo,
-    required DateTime vencimento,
-    required String formaPagamento,
-    required String categoria,
-  }) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    _firestore.collection('users').doc(user.uid).collection('transacao').add({
-      'descricao': nome,
-      'valor': valor,
-      'data': Timestamp.fromDate(vencimento),
-      'tipo': tipo,
-      'meioPagamento': formaPagamento,
-      'categoria': categoria,
-    }).then((_) {
-      print("Transação adicionada com sucesso!");
-    }).catchError((error) {
-      print("Erro ao adicionar transação: $error");
-    });
+              return ListTile(
+                leading: icon,
+                title: Text(
+                  category,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    LinearProgressIndicator(
+                      value: progress.clamp(0.0, 1.0),
+                      backgroundColor: Colors.grey.shade300,
+                      color: progress > 1.0 ? Colors.red : Colors.green,
+                    ),
+                    Text(
+                      goal > 0
+                          ? "Gasto: R\$${expense.toStringAsFixed(2)} de R\$${goal.toStringAsFixed(2)} (${(progress * 100).clamp(0.0, 100.0).toStringAsFixed(1)}%)"
+                          : "Sem meta definida",
+                      style:
+                          const TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                  ],
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.blue),
+                      onPressed: () => _showGoalDialog(category),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _removeGoal(category),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: const Icon(Icons.add),
+        onPressed: _selectCategoryForGoal,
+      ),
+    );
   }
 }

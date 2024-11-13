@@ -11,8 +11,8 @@ class ScreenRegister extends StatefulWidget {
 
 class _ScreenRegisterState extends State<ScreenRegister> {
   final FirebaseAuthService _auth = FirebaseAuthService();
-  TextEditingController _emailController = TextEditingController();
-  TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   @override
   void dispose() {
@@ -23,113 +23,136 @@ class _ScreenRegisterState extends State<ScreenRegister> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final availableHeight = mediaQuery.size.height -
+        mediaQuery.padding.top -
+        mediaQuery.padding.bottom;
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.primary,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                "Registro",
-                style: TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white),
-              ),
-              SizedBox(height: 15),
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  labelStyle:
-                      TextStyle(color: Color.fromRGBO(158, 185, 211, 1)),
-                  fillColor: Theme.of(context).colorScheme.tertiary,
-                  filled: true,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15.0),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 1.0,
+      body: Column(
+        children: [
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Registro",
+                      style: TextStyle(
+                          fontSize: 25,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
                     ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15.0),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 2.0,
+                    SizedBox(height: 20),
+                    TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        labelStyle: TextStyle(
+                          color: Color.fromRGBO(158, 185, 211, 1),
+                        ),
+                        fillColor: Theme.of(context).colorScheme.tertiary,
+                        filled: true,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15.0),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 1.0,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15.0),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 2.0,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    SizedBox(height: 15),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      keyboardType: TextInputType.visiblePassword,
+                      decoration: InputDecoration(
+                        labelText: 'Senha',
+                        labelStyle: TextStyle(
+                          color: Color.fromRGBO(158, 185, 211, 1),
+                        ),
+                        fillColor: Theme.of(context).colorScheme.tertiary,
+                        filled: true,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15.0),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 1.0,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15.0),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 2.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 15),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Já tem uma conta?",
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/');
+                          },
+                          child: Text(
+                            "Login",
+                            style: TextStyle(fontSize: 16, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(
-                height: 15,
-              ),
-              TextField(
-                controller: _passwordController,
-                keyboardType: TextInputType.visiblePassword,
-                decoration: InputDecoration(
-                  labelText: 'Senha',
-                  labelStyle:
-                      TextStyle(color: Color.fromRGBO(158, 185, 211, 1)),
-                  fillColor: Theme.of(context).colorScheme.tertiary,
-                  filled: true,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15.0),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 1.0,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15.0),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 2.0,
-                    ),
-                  ),
-                ),
-              ),
-              ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.tertiary,
-                      elevation: 10,
-                      fixedSize: Size.fromHeight(50)),
-                  onPressed: signUp,
-                  child: Text(
-                    "Registrar-se",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600),
-                  )),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    "Já tem uma conta?",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  TextButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/');
-                      },
-                      child: Text(
-                        "Login",
-                        style: TextStyle(color: Colors.white),
-                      ))
-                ],
-              )
-            ],
+            ),
           ),
-        ),
+          Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.tertiary,
+                elevation: 10,
+                fixedSize: Size.fromHeight(50),
+              ),
+              onPressed: signUp,
+              child: Text(
+                "Registrar-se",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   void signUp() async {
+    FirebaseAuth.instance.setLanguageCode('pt'); 
+
     String email = _emailController.text;
     String password = _passwordController.text;
 

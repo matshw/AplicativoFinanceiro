@@ -31,9 +31,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Map<String, double> ganhoCategorySums = {};
   Map<String, double> gastoCategorySums = {};
   Map<String, double> pagamentoCategorySums = {};
-  Map<String, List<Map<String, dynamic>>> pagamentoTransactions = {};
   double totalGanhos = 0.0;
   double totalGastos = 0.0;
+  Map<String, List<Map<String, dynamic>>> pagamentoTransactions = {};
+  Map<String, double> _goals = {};
+  Map<String, double> _expenses = {};
+  Map<String, double> _previousMonthExpenses = {};
 
   final Map<String, Color> ganhoColors = {
     'Salário': Colors.blue,
@@ -64,14 +67,101 @@ class _ReportsScreenState extends State<ReportsScreen> {
     'Pix': Colors.purple,
     'Boleto': Colors.yellow,
   };
+  final Map<String, Color> _categories = {
+    'Comida': Colors.blue,
+    'Roupas': Colors.green,
+    'Lazer': Colors.orange,
+    'Transporte': Colors.purple,
+    'Saúde': Colors.yellow,
+    'Presentes': Colors.red,
+    'Educação': Colors.cyan,
+    'Beleza': Colors.pink,
+    'Emergência': Colors.teal,
+    'Reparos': Colors.brown,
+    'Streaming': Colors.amber,
+    'Serviços': Colors.indigo,
+    'Tecnologia': Colors.deepOrange,
+    'Outros': Colors.grey,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
   double _getDoubleValue(dynamic value) {
     if (value is int) {
-      return value.toDouble(); // If it's an integer, convert to double
+      return value.toDouble();
     } else if (value is double) {
-      return value; // If it's already a double, just return it
+      return value;
     } else {
-      return 0.0; // Return a default value if it's neither int nor double
+      return 0.0;
     }
+  }
+
+  void _loadData() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final startOfMonth = DateTime(_selectedDate.year, _selectedDate.month, 1);
+    final endOfMonth =
+        DateTime(_selectedDate.year, _selectedDate.month + 1, 0, 23, 59, 59);
+
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('transacao')
+        .where('data', isGreaterThanOrEqualTo: startOfMonth)
+        .where('data', isLessThanOrEqualTo: endOfMonth)
+        .get()
+        .then((snapshot) {
+      List<Map<String, dynamic>> transacoes = snapshot.docs.map((doc) {
+        return doc.data();
+      }).toList();
+
+      Map<String, List<Map<String, dynamic>>> ganhos = {};
+      Map<String, List<Map<String, dynamic>>> gastos = {};
+      Map<String, List<Map<String, dynamic>>> pagamentos = {};
+      Map<String, double> ganhoSumByCategory = {};
+      Map<String, double> gastoSumByCategory = {};
+      Map<String, double> pagamentoSumByCategory = {};
+      double totalGanhosTemp = 0.0;
+      double totalGastosTemp = 0.0;
+
+      for (var transacao in transacoes) {
+        String categoria = transacao['categoria'];
+        String tipo = transacao['tipo'];
+        double valor = (transacao['valor'] ?? 0.0).toDouble();
+
+        if (tipo == 'ganho') {
+          ganhos[categoria] = (ganhos[categoria] ?? [])..add(transacao);
+          ganhoSumByCategory[categoria] =
+              (ganhoSumByCategory[categoria] ?? 0.0) + valor;
+        } else if (tipo == 'gasto') {
+          gastos[categoria] = (gastos[categoria] ?? [])..add(transacao);
+          gastoSumByCategory[categoria] =
+              (gastoSumByCategory[categoria] ?? 0.0) + valor;
+
+          String meioPagamento = transacao['meioPagamento'] ?? 'Outros';
+          pagamentoSumByCategory[meioPagamento] =
+              (pagamentoSumByCategory[meioPagamento] ?? 0) + valor;
+          pagamentos[meioPagamento] = pagamentos[meioPagamento] ?? [];
+          pagamentos[meioPagamento]?.add(transacao);
+        }
+      }
+
+      setState(() {
+        totalGanhos = ganhoSumByCategory.values.fold(0.0, (a, b) => a + b);
+        totalGastos = gastoSumByCategory.values.fold(0.0, (a, b) => a + b);
+        ganhoTransactions = ganhos;
+        gastoTransactions = gastos;
+        ganhoCategorySums = ganhoSumByCategory;
+        gastoCategorySums = gastoSumByCategory;
+        pagamentoTransactions = pagamentos;
+        pagamentoCategorySums = pagamentoSumByCategory;
+      });
+    });
   }
 
   void _selectMonth(BuildContext context) async {
@@ -145,83 +235,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
         _selectedDate = DateTime(tempYear, selectedMonth);
         _selectedMonth = DateFormat('MMMM', 'pt_BR').format(_selectedDate);
         _selectedYear = tempYear;
+        _loadData();
       });
-      _loadData();
     }
-  }
-
-  void _loadData() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final startOfMonth = DateTime(_selectedDate.year, _selectedDate.month, 1);
-    final endOfMonth =
-        DateTime(_selectedDate.year, _selectedDate.month + 1, 0, 23, 59, 59);
-
-    FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('transacao')
-        .where('data', isGreaterThanOrEqualTo: startOfMonth)
-        .where('data', isLessThanOrEqualTo: endOfMonth)
-        .get()
-        .then((snapshot) {
-      List<Map<String, dynamic>> transacoes = snapshot.docs.map((doc) {
-        return doc.data();
-      }).toList();
-
-      Map<String, List<Map<String, dynamic>>> ganhos = {};
-      Map<String, List<Map<String, dynamic>>> gastos = {};
-      Map<String, List<Map<String, dynamic>>> pagamentos = {};
-      Map<String, double> ganhoSumByCategory = {};
-      Map<String, double> gastoSumByCategory = {};
-      Map<String, double> pagamentoSumByCategory = {};
-      double totalGanhosTemp = 0.0;
-      double totalGastosTemp = 0.0;
-
-      for (var transacao in transacoes) {
-        String categoria = transacao['categoria'];
-        String tipo = transacao['tipo'];
-        double valor = (transacao['valor'] ?? 0.0).toDouble();
-
-        if (tipo == 'ganho') {
-          totalGanhosTemp += valor;
-          ganhoSumByCategory[categoria] =
-              (ganhoSumByCategory[categoria] ?? 0) + valor;
-          ganhos[categoria] = ganhos[categoria] ?? [];
-          ganhos[categoria]?.add(transacao);
-        } else if (tipo == 'gasto') {
-          totalGastosTemp += valor;
-          gastoSumByCategory[categoria] =
-              (gastoSumByCategory[categoria] ?? 0) + valor;
-          gastos[categoria] = gastos[categoria] ?? [];
-          gastos[categoria]?.add(transacao);
-
-          String meioPagamento = transacao['meioPagamento'] ?? 'Outros';
-          pagamentoSumByCategory[meioPagamento] =
-              (pagamentoSumByCategory[meioPagamento] ?? 0) + valor;
-          pagamentos[meioPagamento] = pagamentos[meioPagamento] ?? [];
-          pagamentos[meioPagamento]?.add(transacao);
-        }
-      }
-
-      setState(() {
-        ganhoTransactions = ganhos;
-        gastoTransactions = gastos;
-        ganhoCategorySums = ganhoSumByCategory;
-        gastoCategorySums = gastoSumByCategory;
-        pagamentoTransactions = pagamentos;
-        pagamentoCategorySums = pagamentoSumByCategory;
-        totalGanhos = totalGanhosTemp;
-        totalGastos = totalGastosTemp;
-      });
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
   }
 
   Future<void> _exportPDF() async {
@@ -240,6 +256,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           pw.SizedBox(height: 20),
           _buildPDFSection('Meios de Pagamento', pagamentoCategorySums,
               pagamentoTransactions),
+          pw.SizedBox(height: 20),
         ],
       ),
     );
@@ -285,11 +302,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   String descricao = transacao['descricao'] ?? '';
                   double valor = _getDoubleValue(transacao['valor']);
 
-                  String descricaoFinal =
-                      (transacao['tipo'] == 'gasto') ? '$descricao' : descricao;
-
                   return pw.Text(
-                      '$descricaoFinal -  ${currencyFormatter.format(valor)}');
+                      '$descricao -  ${currencyFormatter.format(valor)}');
                 }).toList(),
                 pw.SizedBox(height: 10),
               ],
@@ -305,6 +319,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.primary,
       appBar: AppBar(
+        foregroundColor: Colors.white,
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: const Text(
           'Relatórios Mensais',
@@ -451,22 +466,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             Expanded(
               flex: 1,
               child: Column(
-                children: [
-                  const Text(
-                    'Total por Meios de Pagamento',
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
-                  ),
-                  Text(
-                    currencyFormatter.format(totalGastos),
-                    style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
-                  ),
-                ],
+                children: [],
               ),
             ),
           ],
@@ -578,14 +578,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
               double valor = (transaction['valor'] ?? 0.0).toDouble();
               DateTime data = transaction['data'].toDate();
 
-              String? meioPagamento;
-              if (tipo == 'gasto') {
-                meioPagamento = transaction['meioPagamento'] ?? 'N/A';
-              }
-
               return ListTile(
                 title: Text(
-                  tipo == 'gasto' ? '$descricao - $meioPagamento' : descricao,
+                  descricao,
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
                 subtitle: Text(

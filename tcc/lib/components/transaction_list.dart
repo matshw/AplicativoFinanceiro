@@ -42,7 +42,7 @@ class FirestoreService {
         .doc(docID)
         .get();
     if (docSnapshot.exists) {
-double oldValor = (docSnapshot['valor'] ?? 0.0).toDouble();
+      double oldValor = (docSnapshot['valor'] ?? 0.0).toDouble();
       difference = valor - oldValor;
     }
 
@@ -302,7 +302,7 @@ class _TransactionListState extends State<TransactionList> {
         elevation: 15,
         child: Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary,
+            color: Theme.of(context).colorScheme.secondary,
             borderRadius: BorderRadius.circular(10),
           ),
           height: availableHeight * 0.28,
@@ -314,7 +314,6 @@ class _TransactionListState extends State<TransactionList> {
                   child: CircularProgressIndicator(),
                 );
               } else if (snapshot.hasError) {
-                print("Erro: ${snapshot.hasError}");
                 return const Center(
                   child: Text("Erro ao carregar dados"),
                 );
@@ -335,7 +334,7 @@ class _TransactionListState extends State<TransactionList> {
                   Map<String, dynamic> data =
                       document.data() as Map<String, dynamic>;
                   String transacaoDescricao = data['descricao'];
-double transacaoValor = (data['valor'] ?? 0).toDouble();
+                  double transacaoValor = (data['valor'] ?? 0).toDouble();
                   String tipo = data['tipo'];
                   Timestamp dateTimestamp = data['data'];
                   DateTime date = dateTimestamp.toDate();
