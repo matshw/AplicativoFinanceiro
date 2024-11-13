@@ -64,6 +64,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
     'Pix': Colors.purple,
     'Boleto': Colors.yellow,
   };
+  double _getDoubleValue(dynamic value) {
+    if (value is int) {
+      return value.toDouble(); // If it's an integer, convert to double
+    } else if (value is double) {
+      return value; // If it's already a double, just return it
+    } else {
+      return 0.0; // Return a default value if it's neither int nor double
+    }
+  }
 
   void _selectMonth(BuildContext context) async {
     int tempMonth = _selectedDate.month;
@@ -273,8 +282,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ),
                 pw.SizedBox(height: 5),
                 ...entry.value.map((transacao) {
-                  String descricao = transacao['descricao'];
-                  double valor = transacao['valor'];
+                  String descricao = transacao['descricao'] ?? '';
+                  double valor = _getDoubleValue(transacao['valor']);
 
                   String descricaoFinal =
                       (transacao['tipo'] == 'gasto') ? '$descricao' : descricao;

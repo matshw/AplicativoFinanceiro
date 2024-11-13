@@ -17,13 +17,88 @@ class ScreenBudget extends StatefulWidget {
 class _ScreenBudgetState extends State<ScreenBudget> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Center(child: Text('Erro: Usuário não autenticado.'));
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Gerenciar Assinaturas'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('assinaturas')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return const Center(child: Text('Erro ao carregar assinaturas.'));
+          } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('Nenhuma assinatura encontrada.'));
+          }
+
+          final assinaturas = snapshot.data!.docs;
+
+          return ListView.builder(
+            itemCount: assinaturas.length,
+            itemBuilder: (context, index) {
+              final document = assinaturas[index];
+              final data = document.data() as Map<String, dynamic>;
+              final String nome = data['descricao'] ?? '';
+              final double valor = (data['valor'] ?? 0.0).toDouble();
+              final int periodo = data['periodo'] ?? 30;
+              final DateTime dataCriacao = data['data'] != null
+                  ? (data['data'] as Timestamp).toDate()
+                  : DateTime.now();
+
+              final String formattedDate = DateFormat('dd/MM/yyyy')
+                  .format(dataCriacao.add(Duration(days: periodo)));
+
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                elevation: 5,
+                child: ListTile(
+                  title: Text(
+                    nome,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Valor: ${currencyFormatter.format(valor)} - Vencimento: $formattedDate',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.more_vert),
+                    onPressed: () {
+                      _showActionSheet(document);
+                    },
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
   void _showActionSheet(DocumentSnapshot document) {
     final data = document.data() as Map<String, dynamic>;
     final String docID = document.id;
-    final String nome = data['nome'];
+    final String nome = data['descricao'] ?? '';
     final double valor = (data['valor'] ?? 0.0).toDouble();
     final String imagem = data['imagem'] ?? '';
     final String formaPagamento = data['formaPagamento'] ?? 'N/A';
+    final String categoria = data['categoria'] ?? 'N/A';
 
     showModalBottomSheet(
       context: context,
@@ -32,7 +107,7 @@ class _ScreenBudgetState extends State<ScreenBudget> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Icons.edit),
+              leading: const Icon(Icons.edit),
               title: const Text(
                 'Editar',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -43,7 +118,18 @@ class _ScreenBudgetState extends State<ScreenBudget> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.delete),
+              leading: const Icon(Icons.check_circle),
+              title: const Text(
+                'Marcar como Pago',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _markAsPaid(docID, data);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete),
               title: const Text(
                 'Excluir',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -54,7 +140,7 @@ class _ScreenBudgetState extends State<ScreenBudget> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.cancel),
+              leading: const Icon(Icons.cancel),
               title: const Text(
                 'Cancelar',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -103,10 +189,9 @@ class _ScreenBudgetState extends State<ScreenBudget> {
 
   void _showEditDialog(DocumentSnapshot document) {
     final data = document.data() as Map<String, dynamic>;
-    final String nome = data['nome'];
+    final String nome = data['descricao'] ?? '';
     final double valor = (data['valor'] ?? 0.0).toDouble();
     final String formaPagamento = data['formaPagamento'] ?? 'N/A';
-    final String imagem = data['imagem'] ?? '';
 
     TextEditingController nomeController = TextEditingController(text: nome);
     TextEditingController valorController =
@@ -135,7 +220,7 @@ class _ScreenBudgetState extends State<ScreenBudget> {
                   _updateAssinatura(
                     document.id,
                     nomeController.text,
-                    double.parse(valorController.text),
+                    double.tryParse(valorController.text) ?? 0.0,
                     formaPagamento,
                   );
                   Navigator.pop(context);
@@ -168,7 +253,7 @@ class _ScreenBudgetState extends State<ScreenBudget> {
         .collection('assinaturas')
         .doc(docID)
         .update({
-      'nome': nome,
+      'descricao': nome,
       'valor': valor,
       'formaPagamento': formaPagamento,
     });
@@ -186,68 +271,65 @@ class _ScreenBudgetState extends State<ScreenBudget> {
         .delete();
   }
 
-  @override
-  Widget build(BuildContext context) {
+  void _markAsPaid(String docID, Map<String, dynamic> data) {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      return const Center(child: Text('Erro: Usuário não autenticado.'));
-    }
+    if (user == null) return;
 
-    return Scaffold(
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore
-            .collection('users')
-            .doc(user.uid)
-            .collection('assinaturas')
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return const Center(child: Text('Erro ao carregar assinaturas.'));
-          } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('Nenhuma assinatura encontrada.'));
-          }
+    // Calcular o novo vencimento baseado no período
+    int periodo = data['periodo'] ?? 30; // Período atual da assinatura
+    DateTime novoVencimento = DateTime.now().add(Duration(days: periodo));
 
-          final assinaturas = snapshot.data!.docs;
+    // Atualizar a data da assinatura e criar a transação
+    _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('assinaturas')
+        .doc(docID)
+        .update({
+      'data': Timestamp.fromDate(novoVencimento), // Atualiza a data
+    }).then((_) {
+      // Adicionar a transação ao histórico com categoria e meio de pagamento
+      _addTransaction(
+        nome: data['descricao'],
+        valor: data['valor'],
+        tipo: 'gasto',
+        vencimento: novoVencimento,
+        formaPagamento: data['formaPagamento'] ?? 'N/A',
+        categoria: data['categoria'] ?? 'N/A',
+      );
+      // Mostrar um feedback ao usuário
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content:
+                Text('Assinatura marcada como paga e vencimento atualizado.')),
+      );
+    }).catchError((error) {
+      print("Erro ao atualizar a assinatura: $error");
+    });
+  }
 
-          return ListView.builder(
-            itemCount: assinaturas.length,
-            itemBuilder: (context, index) {
-              final document = assinaturas[index];
-              final data = document.data() as Map<String, dynamic>;
-              final String nome = data['nome'];
-              final double valor = (data['valor'] ?? 0.0).toDouble();
-              final String imagem = data['imagem'] ?? '';
-              final String formaPagamento = data['formaPagamento'] ?? 'N/A';
+  void _addTransaction({
+    required String nome,
+    required double valor,
+    required String tipo,
+    required DateTime vencimento,
+    required String formaPagamento,
+    required String categoria,
+  }) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-              return ListTile(
-                leading: imagem.isNotEmpty
-                    ? CircleAvatar(
-                        backgroundImage: NetworkImage(imagem),
-                        radius: 30,
-                      )
-                    : const Icon(Icons.subscriptions, size: 30),
-                title: Text(
-                  nome,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-                subtitle: Text(
-                  '${currencyFormatter.format(valor)} - $formaPagamento',
-                  style: const TextStyle(fontSize: 16),
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.more_vert),
-                  onPressed: () {
-                    _showActionSheet(document);
-                  },
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
+    _firestore.collection('users').doc(user.uid).collection('transacao').add({
+      'descricao': nome,
+      'valor': valor,
+      'data': Timestamp.fromDate(vencimento),
+      'tipo': tipo,
+      'meioPagamento': formaPagamento,
+      'categoria': categoria,
+    }).then((_) {
+      print("Transação adicionada com sucesso!");
+    }).catchError((error) {
+      print("Erro ao adicionar transação: $error");
+    });
   }
 }

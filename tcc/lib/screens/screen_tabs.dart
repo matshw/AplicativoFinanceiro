@@ -77,10 +77,10 @@ class _ScreenTabsState extends State<ScreenTabs> {
             icon: Icon(Icons.receipt),
             label: "Relatórios",
           ),
-          BottomNavigationBarItem(
-            icon: Icon(FontAwesomeIcons.fileInvoiceDollar),
-            label: "Orçamento",
-          )
+          // BottomNavigationBarItem(
+          //   icon: Icon(FontAwesomeIcons.fileInvoiceDollar),
+          //   label: "Orçamento",
+          // )
         ],
       ),
     );

@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -13,10 +12,434 @@ import 'package:tcc/screens/screen_payments.dart';
 class TransactionFormGasto extends StatefulWidget {
   final ValueNotifier<Map<String, double>> balanceNotifier;
   final Function onSubmit;
+
   const TransactionFormGasto(this.balanceNotifier, this.onSubmit);
 
   @override
   State<TransactionFormGasto> createState() => _TransactionFormGastoState();
+}
+
+class _TransactionFormGastoState extends State<TransactionFormGasto>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final _descricaoController = TextEditingController();
+  final _valorController = TextEditingController();
+  bool imageExists = false;
+  DateTime _selectedDate = DateTime.now();
+  bool isParcelado = false;
+  int? _selectedParcelas;
+  String? _selectedCategory;
+  String? _selectedPayment;
+  String? imagem;
+  int? _selectedPeriod;
+  final List<int> periods = [15, 30, 60, 90];
+
+  final FirestoreService _firestoreService = FirestoreService();
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  void _submitFormGasto() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showError("Erro: usuário não autenticado.");
+      return;
+    }
+
+    final description = _descricaoController.text;
+    final value = double.tryParse(_valorController.text) ?? 0.0;
+
+    if (description.isEmpty ||
+        value <= 0 ||
+        _selectedCategory == null ||
+        _selectedPayment == null) {
+      _showError("Preencha todos os campos.");
+      return;
+    }
+
+    if (_tabController.index == 1 && _selectedPeriod == null) {
+      _showError("Selecione um período para o gasto recorrente.");
+      return;
+    }
+
+    if (_tabController.index == 0) {
+      await _addNormalTransaction(user.uid, description, value);
+    } else {
+      await _addRecurringTransaction(user.uid, description, value);
+    }
+
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _addNormalTransaction(
+      String uid, String description, double value) async {
+    await _firestoreService.addTransacao(
+      uid,
+      description,
+      _selectedCategory!,
+      "gasto",
+      value,
+      _selectedDate,
+      imagem,
+      _selectedPayment!,
+    );
+  }
+
+  Future<void> _addRecurringTransaction(
+      String uid, String description, double value) async {
+    await _firestoreService.addRecurringTransaction(
+      uid,
+      description,
+      _selectedCategory!,
+      "gasto_recorrente",
+      value,
+      _selectedPeriod!,
+      _selectedDate,
+      _selectedPayment!,
+    );
+  }
+
+  void _showError(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Erro"),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Fechar"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildNormalTransactionForm() {
+    return Column(
+      children: [
+        _buildDescriptionField(),
+        _buildValueField(),
+        _buildCategorySelector(),
+        _buildPaymentMethodSelector(),
+        _buildDateSelector(),
+        _buildParceladoSwitch(),
+        _buildImageSelector(),
+        _buildSubmitButton("Adicionar gasto"),
+      ],
+    );
+  }
+
+  Widget _buildRecurringTransactionForm() {
+    return Column(
+      children: [
+        _buildDescriptionField(),
+        _buildValueField(),
+        DropdownButton<int>(
+          value: _selectedPeriod,
+          hint: const Text("Selecionar período de recorrência"),
+          items: periods.map((int days) {
+            return DropdownMenuItem<int>(
+              value: days,
+              child: Text("$days dias"),
+            );
+          }).toList(),
+          onChanged: (int? value) {
+            setState(() {
+              _selectedPeriod = value;
+            });
+          },
+        ),
+        _buildCategorySelector(),
+        _buildPaymentMethodSelector(),
+        _buildImageSelector(),
+        _buildSubmitButton("Adicionar gasto recorrente"),
+      ],
+    );
+  }
+
+  Widget _buildDescriptionField() {
+    return TextField(
+      controller: _descricaoController,
+      decoration: InputDecoration(
+        labelText: 'Descrição',
+        labelStyle: TextStyle(color: Color.fromRGBO(158, 185, 211, 1)),
+        fillColor: Theme.of(context).colorScheme.tertiary,
+        filled: true,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15.0),
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.primary,
+            width: 1.0,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15.0),
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.primary,
+            width: 2.0,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildValueField() {
+    return TextField(
+      controller: _valorController,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: 'Valor (R\$)',
+        labelStyle: TextStyle(color: Color.fromRGBO(158, 185, 211, 1)),
+        fillColor: Theme.of(context).colorScheme.tertiary,
+        filled: true,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15.0),
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.primary,
+            width: 1.0,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15.0),
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.primary,
+            width: 2.0,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openCategorySelection() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SelectGastoCategoryScreen(
+          onCategorySelected: (category, icon) {
+            setState(() {
+              _selectedCategory = category;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  void _openPaymentMethodSelection() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SelectPaymentMethodScreen(
+          onPaymentMethodSelected: (payment, icon) {
+            setState(() {
+              _selectedPayment = payment;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategorySelector() {
+    return ListTile(
+      leading: Icon(Icons.category, color: Colors.white),
+      title: Text(
+        _selectedCategory ?? "Selecionar Categoria",
+        style: TextStyle(
+            fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+      ),
+      onTap: () {
+        _openCategorySelection();
+      },
+    );
+  }
+
+  Widget _buildPaymentMethodSelector() {
+    return ListTile(
+      leading: Icon(Icons.credit_card, color: Colors.white),
+      title: Text(
+        _selectedPayment ?? "Selecionar Forma de Pagamento",
+        style: TextStyle(
+            fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+      ),
+      onTap: () {
+        _openPaymentMethodSelection();
+      },
+    );
+  }
+
+  Widget _buildDateSelector() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            TextButton(
+              onPressed: _selectToday,
+              child: const Text("Hoje",
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white)),
+            ),
+            TextButton(
+              onPressed: _selectDate,
+              child: const Text("Em Breve",
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white)),
+            ),
+          ],
+        ),
+        FittedBox(
+          child: Text(
+            (_selectedDate.year == DateTime.now().year &&
+                    _selectedDate.month == DateTime.now().month &&
+                    _selectedDate.day == DateTime.now().day)
+                ? 'Hoje'
+                : 'Data Selecionada: ${DateFormat('d/MMM/y', 'pt_BR').format(_selectedDate)}',
+            style: TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildParceladoSwitch() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text("Parcelado",
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.white)),
+        Switch(
+          activeColor: Colors.green,
+          value: isParcelado,
+          onChanged: (bool newValue) {
+            setState(() {
+              isParcelado = newValue;
+              if (!isParcelado) _selectedParcelas = null;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImageSelector() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const FaIcon(FontAwesomeIcons.solidImage, color: Colors.white),
+        MaterialButton(
+          onPressed: _selectImage,
+          child: const Text("Anexar imagem",
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white)),
+        ),
+        if (imageExists)
+          FittedBox(
+            child: InkWell(
+              onTap: _showImagePopup,
+              child: const Text('Ver imagem anexada'),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSubmitButton(String label) {
+    return ElevatedButton(
+      onPressed: _submitFormGasto,
+      child: Text(label),
+    );
+  }
+
+  void _selectToday() {
+    setState(() {
+      _selectedDate = DateTime.now();
+    });
+  }
+
+  void _selectDate() {
+    showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    ).then((pickedDate) {
+      if (pickedDate != null) {
+        setState(() {
+          _selectedDate = pickedDate;
+        });
+      }
+    });
+  }
+
+  void _selectImage() async {
+    final imagePicker = ImagePicker();
+    final file = await imagePicker.pickImage(source: ImageSource.gallery);
+    if (file == null) return;
+
+    final uniqueFileName = DateTime.now().millisecondsSinceEpoch.toString();
+    final referenceRoot = FirebaseStorage.instance.ref();
+    final referenceImageDirectory = referenceRoot.child('images');
+    final referenceImageUploaded =
+        referenceImageDirectory.child('$uniqueFileName.jpg');
+
+    await referenceImageUploaded.putFile(File(file.path));
+    final newImageURL = await referenceImageUploaded.getDownloadURL();
+    setState(() {
+      imagem = newImageURL;
+      imageExists = true;
+    });
+  }
+
+  void _showImagePopup() {
+    if (imagem == null) return;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Image.network(imagem!),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Adicionar Gasto"),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: "Gasto Normal"),
+            Tab(text: "Gasto Recorrente"),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildNormalTransactionForm(),
+          _buildRecurringTransactionForm(),
+        ],
+      ),
+    );
+  }
 }
 
 class FirestoreService {
@@ -47,796 +470,36 @@ class FirestoreService {
         'meioPagamento': meioPagamento,
       });
     } catch (e) {
+      print("Erro ao adicionar transação: $e");
     }
   }
 
-  Future<void> updateInfo(
+  Future<void> addRecurringTransaction(
     String uid,
-    double valor,
-    double saldoValue,
-    String tipo,
-  ) async {
-    try {
-      DocumentSnapshot doc =
-          await _firestore.collection('users').doc(uid).get();
-      double currentGanhoValue = doc['ganhoValue'] ?? 0.0;
-      double currentGastoValue = doc['gastoValue'] ?? 0.0;
-      double currentSaldoValue = doc['saldoValue'] ?? 0.0;
-
-      if (tipo == 'ganho') {
-        await _firestore.collection('users').doc(uid).update({
-          'ganhoValue': currentGanhoValue + valor,
-          'saldoValue': currentSaldoValue + saldoValue,
-        });
-      } else if (tipo == 'gasto') {
-        await _firestore.collection('users').doc(uid).update({
-          'gastoValue': currentGastoValue + valor,
-          'saldoValue': currentSaldoValue + saldoValue,
-        });
-      }
-    } catch (e) {
-    }
-  }
-
-  Future<Map<String, double>> getInfo(String uid) async {
-    try {
-      DocumentSnapshot doc =
-          await _firestore.collection('users').doc(uid).get();
-      if (doc.exists) {
-        double gastoValue = doc['gastoValue'] ?? 0.0;
-        double saldoValue = doc['saldoValue'] ?? 0.0;
-        return {'gastoValue': gastoValue, 'saldoValue': saldoValue};
-      } else {
-        return {'gastoValue': 0.0, 'saldoValue': 0.0};
-      }
-    } catch (e) {
-
-      return {'gastoValue': 0.0, 'saldoValue': 0.0};
-    }
-  }
-
-  Stream<QuerySnapshot> getFutureTransactionsStream(String uid) {
-    DateTime now = DateTime.now();
-    DateTime startOfMonth = DateTime(now.year, now.month, 1);
-    DateTime endOfMonth = DateTime(now.year, now.month + 1, 0);
-
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('transacao')
-        .where('data', isGreaterThanOrEqualTo: startOfMonth)
-        .where('data', isLessThanOrEqualTo: endOfMonth)
-        .where('tipo', isEqualTo: 'futura')
-        .orderBy('data', descending: true)
-        .snapshots();
-  }
-
-  Stream<DocumentSnapshot> getSaldoStream(String uid) {
-    return _firestore.collection('users').doc(uid).snapshots();
-  }
-
-  Future<void> updateTransacao(
-    String uid,
-    String docID,
     String descricao,
-    double valor,
+    String categoria,
     String tipo,
+    double valor,
+    int periodo,
+    DateTime dataInicial,
+    String meioPagamento,
   ) async {
-    double difference = 0.0;
-
-    DocumentSnapshot docSnapshot = await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('transacao')
-        .doc(docID)
-        .get();
-    if (docSnapshot.exists) {
-      double oldValor = docSnapshot['valor'] ?? 0.0;
-      difference = valor - oldValor;
-    }
-
-    await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('transacao')
-        .doc(docID)
-        .update({
-      'descricao': descricao,
-      'valor': valor,
-    });
-
-    if (tipo == 'ganho') {
-      await _firestore.collection('users').doc(uid).update({
-        'saldoValue': FieldValue.increment(difference),
-        'ganhoValue': FieldValue.increment(difference)
-      });
-    } else if (tipo == 'gasto') {
-      await _firestore.collection('users').doc(uid).update({
-        'saldoValue': FieldValue.increment(-difference),
-        'gastoValue': FieldValue.increment(difference)
-      });
-    }
-  }
-
-  Future<void> removeTransacao(String uid, String docID, double valor,
-      String tipo, DateTime data) async {
-    await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('transacao')
-        .doc(docID)
-        .delete();
-
-    bool isFutureTransaction = data.isAfter(DateTime.now());
-
-    if (!isFutureTransaction) {
-      if (tipo == 'ganho') {
-        await _firestore.collection('users').doc(uid).update({
-          'saldoValue': FieldValue.increment(-valor),
-          'ganhoValue': FieldValue.increment(-valor)
-        });
-      } else if (tipo == 'gasto') {
-        await _firestore.collection('users').doc(uid).update({
-          'saldoValue': FieldValue.increment(valor),
-          'gastoValue': FieldValue.increment(-valor)
-        });
-      }
-    }
-  }
-}
-
-class _TransactionFormGastoState extends State<TransactionFormGasto> {
-  double gastoValue = 0;
-  double saldoValue = 0;
-  final _descricaoController = TextEditingController();
-  final _valorController = TextEditingController();
-  bool imageExists = false;
-  var _selectedDate = DateTime.now();
-  final FirestoreService _firestoreService = FirestoreService();
-  String? _selectedCategory;
-  String? _selectedPayment;
-  String? imagem;
-  FaIcon defaultIcon = FaIcon(FontAwesomeIcons.question);
-
-  bool isParcelado = false;
-  int? _selectedParcelas;
-  Stream<QuerySnapshot> _getFutureTransactionsStream() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      return Stream.empty();
-    }
-
-    return _firestoreService.getFutureTransactionsStream(user.uid);
-  }
-
-  Future<void> _loadInfo() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    Map<String, double> info = await _firestoreService.getInfo(user.uid);
-    setState(() {
-      gastoValue = info['gastoValue']!;
-      saldoValue = info['saldoValue']!;
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadInfo();
-  }
-
-  void _openCategorySelection() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => SelectGastoCategoryScreen(
-          onCategorySelected: (category, icon) {
-            setState(() {
-              _selectedCategory = category;
-            });
-          },
-        ),
-      ),
-    );
-  }
-
-  void _openPaymentMethodSelection() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => SelectPaymentMethodScreen(
-          onPaymentMethodSelected: (method, icon) {
-            setState(() {
-              _selectedPayment = method;
-            });
-          },
-        ),
-      ),
-    );
-  }
-
-  void _processarTransacoesFuturas() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    _getFutureTransactionsStream().listen((snapshot) {
-      for (var doc in snapshot.docs) {
-        var data = doc['data'].toDate();
-        var tipo = doc['tipo'];
-        var valor = doc['valor'];
-        var descricao = doc['descricao'];
-
-        if (tipo == 'futura' &&
-            (data.isBefore(DateTime.now()) ||
-                data.isAtSameMomentAs(DateTime.now()))) {
-          _firestoreService.updateTransacao(
-            user.uid,
-            doc.id,
-            descricao,
-            valor,
-            "gasto",
-          );
-
-          _firestoreService.updateInfo(
-            user.uid,
-            valor,
-            -valor,
-            'gasto',
-          );
-        }
-      }
-    });
-  }
-
-  void _submitFormGasto() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      _showError("Erro: usuário não autenticado.");
-      return;
-    }
-
-    final description = _descricaoController.text;
-    final category = _selectedCategory;
-    final meioPagamento = _selectedPayment;
-    final value = double.tryParse(_valorController.text) ?? 0.0;
-
-    if (description.isEmpty ||
-        value <= 0 ||
-        category == null ||
-        meioPagamento == null) {
-      _showError("Preencha todos os campos.");
-      return;
-    }
-
-    bool isFutureTransaction = _selectedDate.isAfter(DateTime.now());
-
     try {
-      if (isParcelado && _selectedParcelas != null && _selectedParcelas! > 1) {
-        double parcelaValue = value / _selectedParcelas!;
-        DateTime currentDate = _selectedDate;
-
-        for (int i = 0; i < _selectedParcelas!; i++) {
-          await _firestoreService.addTransacao(
-            user.uid,
-            "$description (Parcela ${i + 1}/$_selectedParcelas)",
-            category,
-            "futura",
-            parcelaValue,
-            currentDate,
-            imagem,
-            meioPagamento,
-          );
-
-          currentDate = DateTime(
-              currentDate.year, currentDate.month + 1, currentDate.day);
-        }
-      } else {
-        await _firestoreService.addTransacao(
-          user.uid,
-          description,
-          category,
-          isFutureTransaction ? "futura" : "gasto",
-          value,
-          _selectedDate,
-          imagem,
-          meioPagamento,
-        );
-
-        if (!isFutureTransaction) {
-          await _firestoreService.updateInfo(
-            user.uid,
-            value,
-            -value,
-            'gasto',
-          );
-
-          setState(() {
-            gastoValue += value;
-            saldoValue -= value;
-          });
-
-          widget.balanceNotifier.value = {
-            'gastoValue': gastoValue,
-            'saldoValue': saldoValue,
-          };
-        }
-      }
-
-      Navigator.of(context).pop();
-    } catch (e) {
-      _showError("Erro ao adicionar transação.");
-    }
-  }
-
-  void _showError(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Erro"),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text("Fechar"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  final Map<String, FaIcon> _paymentMethods = {
-    "Dinheiro": const FaIcon(FontAwesomeIcons.moneyBill),
-    "Cartão de Crédito": const FaIcon(FontAwesomeIcons.ccVisa),
-    "Cartão de Débito": const FaIcon(FontAwesomeIcons.ccMastercard),
-    "Transferência Bancária": const FaIcon(FontAwesomeIcons.moneyBillTransfer),
-    "Pix": const FaIcon(FontAwesomeIcons.pix),
-    "Boleto": const FaIcon(FontAwesomeIcons.file),
-  };
-
-  final Map<String, FaIcon> _categories = {
-    'Comida': const FaIcon(FontAwesomeIcons.burger),
-    'Roupas': const FaIcon(FontAwesomeIcons.shirt),
-    'Lazer': const FaIcon(FontAwesomeIcons.futbol),
-    'Transporte': const FaIcon(FontAwesomeIcons.bicycle),
-    'Saúde': const FaIcon(FontAwesomeIcons.suitcaseMedical),
-    'Presentes': const FaIcon(FontAwesomeIcons.gift),
-    'Educação': const FaIcon(FontAwesomeIcons.book),
-    'Beleza': const FaIcon(FontAwesomeIcons.paintbrush),
-    'Emergência': const FaIcon(FontAwesomeIcons.hospital),
-    'Reparos': const FaIcon(FontAwesomeIcons.hammer),
-    'Streaming': const FaIcon(FontAwesomeIcons.tv),
-    'Serviços': const FaIcon(FontAwesomeIcons.clipboard),
-    'Tecnologia': const FaIcon(FontAwesomeIcons.laptop),
-    'Outros': const FaIcon(FontAwesomeIcons.circleQuestion),
-  };
-
-  void _selectImage() async {
-    ImagePicker imagePicker = ImagePicker();
-    XFile? file = await imagePicker.pickImage(source: ImageSource.gallery);
-
-    if (file == null) {
-
-      return;
-    }
-
-    try {
-      String uniqueFileName = DateTime.now().millisecondsSinceEpoch.toString();
-      Reference referenceRoot = FirebaseStorage.instance.ref();
-      Reference referenceImageDirectory = referenceRoot.child('images');
-      Reference referenceImageUploaded =
-          referenceImageDirectory.child('$uniqueFileName.jpg');
-
-      await referenceImageUploaded.putFile(File(file.path));
-      String newImageURL = await referenceImageUploaded.getDownloadURL();
-      setState(() {
-        imagem = newImageURL;
-        imageExists = true;
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('recurring_transactions')
+          .add({
+        'descricao': descricao,
+        'valor': valor,
+        'categoria': categoria,
+        'tipo': tipo,
+        'periodo': periodo,
+        'dataInicial': dataInicial,
+        'meioPagamento': meioPagamento,
       });
     } catch (e) {
+      print("Erro ao adicionar transação recorrente: $e");
     }
-  }
-
-  void _showImagePopup() {
-    if (imagem == null) return;
-    showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text(
-              "Imagem anexada",
-              style: TextStyle(
-                fontSize: 20,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            content: Image.network(imagem!),
-            actions: [
-              TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text("Fechar"))
-            ],
-          );
-        });
-  }
-
-  void _showDatePicker() {
-    showDatePicker(
-            context: context,
-            initialDate: DateTime.now(),
-            firstDate: DateTime.now(),
-            lastDate: DateTime(2100),
-            locale: const Locale('pt', 'BR'))
-        .then((pickedDate) {
-      if (pickedDate == null) {
-        return;
-      } else {
-        setState(() {
-          _selectedDate = pickedDate;
-        });
-      }
-    });
-  }
-
-  void _updateDate() {
-    setState(() {
-      _selectedDate = DateTime.now().copyWith(
-        hour: 0,
-        minute: 0,
-        second: 0,
-        millisecond: 0,
-        microsecond: 0,
-      );
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-    final avaliableHeight = mediaQuery.size.height - mediaQuery.padding.top;
-    final avaliableWidth = mediaQuery.size.width;
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      backgroundColor: Theme.of(context).colorScheme.primary,
-      appBar: AppBar(
-                foregroundColor: Colors.white,
-
-        title: const Text(
-          "Adicionar gasto",
-          style: TextStyle(
-              fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
-        ),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0),
-        child: SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: avaliableHeight * 0.9,
-            ),
-            child: IntrinsicHeight(
-              child: Container(
-                padding: EdgeInsets.only(top: avaliableHeight * 0.025),
-                height: avaliableHeight * 0.92,
-                child: Column(
-                  children: [
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Descrição",
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white),
-                      ),
-                    ),
-                    TextField(
-                      controller: _descricaoController,
-                      decoration: InputDecoration(
-                        labelText: 'Descrição',
-                        labelStyle:
-                            TextStyle(color: Color.fromRGBO(158, 185, 211, 1)),
-                        fillColor: Theme.of(context).colorScheme.tertiary,
-                        filled: true,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15.0),
-                          borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                            width: 1.0,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15.0),
-                          borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                            width: 2.0,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: avaliableWidth * 0.02,
-                    ),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Valor (R\$)",
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white),
-                      ),
-                    ),
-                    TextField(
-                      controller: _valorController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Valor R\$',
-                        labelStyle:
-                            TextStyle(color: Color.fromRGBO(158, 185, 211, 1)),
-                        fillColor: Theme.of(context).colorScheme.tertiary,
-                        filled: true,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15.0),
-                          borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                            width: 1.0,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15.0),
-                          borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                            width: 2.0,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: avaliableHeight * 0.02,
-                    ),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Categoria",
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white),
-                      ),
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.category,
-                        color: Colors.white,
-                      ),
-                      title: Text(
-                        _selectedCategory ?? "Selecionar Categoria",
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white),
-                      ),
-                      onTap: _openCategorySelection,
-                    ),
-                    SizedBox(
-                      height: avaliableHeight * 0.02,
-                    ),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Forma de pagamento",
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white),
-                      ),
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.credit_card,
-                        color: Colors.white,
-                      ),
-                      title: Text(
-                        _selectedPayment ?? "Selecionar Forma de Pagamento",
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white),
-                      ),
-                      onTap: _openPaymentMethodSelection,
-                    ),
-                    SizedBox(
-                      height: avaliableHeight * 0.02,
-                    ),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Data do pagamento",
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white),
-                      ),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            TextButton(
-                              onPressed: _updateDate,
-                              child: const Text(
-                                "Hoje",
-                                style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: _showDatePicker,
-                              child: const Text(
-                                "Em Breve",
-                                style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
-                        FittedBox(
-                          child: Text(
-                            (_selectedDate.year == DateTime.now().year &&
-                                    _selectedDate.month ==
-                                        DateTime.now().month &&
-                                    _selectedDate.day == DateTime.now().day)
-                                ? 'Hoje'
-                                : 'Data Selecionada: ${DateFormat('d/MMM/y', 'pt_BR').format(_selectedDate)}',
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(
-                      height: avaliableHeight * 0.02,
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          "Parcelado",
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white),
-                        ),
-                        Switch(
-                          activeColor: Colors.green,
-                          value: isParcelado,
-                          onChanged: (bool newValue) {
-                            setState(() {
-                              isParcelado = newValue;
-                              if (!isParcelado) {
-                                _selectedParcelas = null;
-                              }
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                    if (isParcelado)
-                      Column(
-                        children: [
-                          const Text(
-                            "Selecione o número de parcelas",
-                            style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white),
-                          ),
-                          DropdownButton<int>(
-                            hint: const Text(
-                              "Parcelas",
-                              style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white),
-                            ),
-                            value: _selectedParcelas,
-                            items: List<int>.generate(12, (i) => i + 1)
-                                .map((int value) {
-                              return DropdownMenuItem<int>(
-                                value: value,
-                                child: Text("$value"),
-                              );
-                            }).toList(),
-                            onChanged: (int? newValue) {
-                              setState(() {
-                                _selectedParcelas = newValue;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    SizedBox(
-                      height: avaliableHeight * 0.02,
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Column(
-                              children: [],
-                            ),
-                            const FaIcon(
-                              FontAwesomeIcons.solidImage,
-                              color: Colors.white,
-                            ),
-                            MaterialButton(
-                              onPressed: _selectImage,
-                              child: const Text(
-                                "Anexar imagem",
-                                style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (imageExists)
-                          FittedBox(
-                            child: InkWell(
-                              onTap: _showImagePopup,
-                              child: const Text('Ver imagem anexada'),
-                            ),
-                          ),
-                      ],
-                    ),
-                    Spacer(),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      Theme.of(context).colorScheme.tertiary,
-                                  elevation: 10,
-                                  fixedSize: Size.fromHeight(50)),
-                              onPressed: _submitFormGasto,
-                              child: const Text(
-                                "Adicionar gasto",
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

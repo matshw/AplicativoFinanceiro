@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:tcc/components/card_balance.dart';
-import 'package:tcc/components/transaction_form_assinatura.dart';
 import 'package:tcc/components/transaction_form_economias.dart';
 import 'package:tcc/components/transaction_form_ganho.dart';
 import 'package:tcc/components/transaction_form_gasto.dart';
 import 'package:tcc/components/transaction_list.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:tcc/components/transaction_list_future.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ScreenMain extends StatefulWidget {
   const ScreenMain();
@@ -20,6 +21,29 @@ class _ScreenMainState extends State<ScreenMain> {
   final ValueNotifier<Map<String, double>> balanceNotifier =
       ValueNotifier({'ganhoValue': 0.0, 'saldoValue': 0.0, 'gastoValue': 0.0});
 
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialBalance();
+  }
+
+  // Carrega os valores iniciais do Firestore e atualiza balanceNotifier
+  Future<void> _loadInitialBalance() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final firestore = FirebaseFirestore.instance;
+    final doc = await firestore.collection('users').doc(user.uid).get();
+
+    if (doc.exists && doc.data() != null) {
+      balanceNotifier.value = {
+        'ganhoValue': doc.data()?['ganhoValue']?.toDouble() ?? 0.0,
+        'saldoValue': doc.data()?['saldoValue']?.toDouble() ?? 0.0,
+        'gastoValue': doc.data()?['gastoValue']?.toDouble() ?? 0.0,
+      };
+    }
+  }
+
   void _addTransacao(
       String descricao,
       String categoria,
@@ -28,13 +52,11 @@ class _ScreenMainState extends State<ScreenMain> {
       DateTime dataRecebimento,
       String? imagem,
       String meioPagamento) {
-    setState(() {
-      if (tipo == 'ganho') {
-        _updateBalanceGanho(valor);
-      } else if (tipo == 'gasto') {
-        _updateBalanceGasto(valor);
-      }
-    });
+    if (tipo == 'ganho') {
+      _updateBalanceGanho(valor);
+    } else if (tipo == 'gasto') {
+      _updateBalanceGasto(valor);
+    }
   }
 
   void _updateBalanceGanho(double value) {
@@ -43,6 +65,7 @@ class _ScreenMainState extends State<ScreenMain> {
       'saldoValue': balanceNotifier.value['saldoValue']! + value,
       'gastoValue': balanceNotifier.value['gastoValue']!,
     };
+    _saveBalance();
   }
 
   void _updateBalanceGasto(double value) {
@@ -51,6 +74,20 @@ class _ScreenMainState extends State<ScreenMain> {
       'saldoValue': balanceNotifier.value['saldoValue']! - value,
       'ganhoValue': balanceNotifier.value['ganhoValue']!,
     };
+    _saveBalance();
+  }
+
+  // Atualiza os valores de saldo no Firestore
+  Future<void> _saveBalance() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final firestore = FirebaseFirestore.instance;
+    await firestore.collection('users').doc(user.uid).update({
+      'ganhoValue': balanceNotifier.value['ganhoValue'],
+      'saldoValue': balanceNotifier.value['saldoValue'],
+      'gastoValue': balanceNotifier.value['gastoValue'],
+    });
   }
 
   void _openTransactionFormModalCofrinho() {
@@ -81,16 +118,6 @@ class _ScreenMainState extends State<ScreenMain> {
     );
   }
 
-  void _openTransactionFormModalAssinatura() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (BuildContext context) {
-        return TransactionFormAssinatura();
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
@@ -107,11 +134,12 @@ class _ScreenMainState extends State<ScreenMain> {
             SizedBox(
               height: availableHeight * 0.02,
             ),
-            CardBalance(
-              _openTransactionFormModalGanho,
-              balanceNotifier.value['ganhoValue'] ?? 0.0,
-              balanceNotifier.value['saldoValue'] ?? 0.0,
-              balanceNotifier.value['gastoValue'] ?? 0.0,
+            // Usando o ValueListenableBuilder para observar as mudanças no balanceNotifier
+            ValueListenableBuilder<Map<String, double>>(
+              valueListenable: balanceNotifier,
+              builder: (context, balance, child) {
+                return CardBalance(balanceNotifier);
+              },
             ),
             SizedBox(
               height: availableHeight * 0.02,
@@ -153,7 +181,7 @@ class _ScreenMainState extends State<ScreenMain> {
         ),
       ),
       floatingActionButton: SpeedDial(
-        backgroundColor: Color.fromARGB(255, 59, 66, 72),
+        backgroundColor: const Color.fromARGB(255, 59, 66, 72),
         icon: FontAwesomeIcons.plus,
         foregroundColor: Colors.white,
         overlayOpacity: 0.4,
@@ -178,13 +206,6 @@ class _ScreenMainState extends State<ScreenMain> {
             child: const FaIcon(FontAwesomeIcons.piggyBank),
             label: "Economias",
             onTap: _openTransactionFormModalCofrinho,
-          ),
-          SpeedDialChild(
-            shape: const CircleBorder(),
-            backgroundColor: Colors.blueAccent,
-            child: const FaIcon(FontAwesomeIcons.clipboard),
-            label: "Assinaturas",
-            onTap: _openTransactionFormModalAssinatura,
           ),
         ],
       ),
