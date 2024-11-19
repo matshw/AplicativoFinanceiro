@@ -49,7 +49,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   };
 
   final Map<String, Color> gastoColors = {
-    'Comida': Colors.blue,
+    'Alimentação': Colors.blue,
     'Roupas': Colors.green,
     'Lazer': Colors.orange,
     'Transporte': Colors.purple,
@@ -68,7 +68,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     'Boleto': Colors.yellow,
   };
   final Map<String, Color> _categories = {
-    'Comida': Colors.blue,
+    'Alimentação': Colors.blue,
     'Roupas': Colors.green,
     'Lazer': Colors.orange,
     'Transporte': Colors.purple,

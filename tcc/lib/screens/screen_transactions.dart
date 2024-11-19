@@ -441,7 +441,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       FontAwesomeIcons.circleQuestion,
       color: Colors.white54,
     ),
-    'Comida': const FaIcon(
+    'Alimentação': const FaIcon(
       FontAwesomeIcons.burger,
       color: Colors.white54,
     ),
@@ -599,7 +599,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         child: Column(
           children: [
             SizedBox(
-              width: mediaQuery.size.width * 0.95,
+              width: mediaQuery.size.width * 1,
               child: Container(
                 padding: EdgeInsets.only(top: 10),
                 child: Row(
@@ -643,7 +643,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               height: availableHeight * 0.05,
             ),
             Container(
-              height: availableHeight * 0.7,
+              height: availableHeight * 0.8,
               child: StreamBuilder<QuerySnapshot>(
                 stream: firestoreService.getTransactionsStream(user.uid),
                 builder: (context, snapshot) {

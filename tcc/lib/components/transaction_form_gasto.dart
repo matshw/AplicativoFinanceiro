@@ -484,7 +484,7 @@ class _TransactionFormGastoState extends State<TransactionFormGasto> {
   };
 
   final Map<String, FaIcon> _categories = {
-    'Comida': const FaIcon(FontAwesomeIcons.burger),
+    'Alimentação': const FaIcon(FontAwesomeIcons.burger),
     'Roupas': const FaIcon(FontAwesomeIcons.shirt),
     'Lazer': const FaIcon(FontAwesomeIcons.futbol),
     'Transporte': const FaIcon(FontAwesomeIcons.bicycle),

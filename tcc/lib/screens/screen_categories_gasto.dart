@@ -7,7 +7,7 @@ class SelectGastoCategoryScreen extends StatelessWidget {
   SelectGastoCategoryScreen({required this.onCategorySelected});
 
   final Map<String, FaIcon> _categories = {
-    'Comida': const FaIcon(FontAwesomeIcons.burger),
+    'Alimentação': const FaIcon(FontAwesomeIcons.burger),
     'Roupas': const FaIcon(FontAwesomeIcons.shirt),
     'Lazer': const FaIcon(FontAwesomeIcons.futbol),
     'Transporte': const FaIcon(FontAwesomeIcons.bicycle),
@@ -18,7 +18,7 @@ class SelectGastoCategoryScreen extends StatelessWidget {
     'Emergência': const FaIcon(FontAwesomeIcons.hospital),
     'Reparos': const FaIcon(FontAwesomeIcons.hammer),
     'Streaming': const FaIcon(FontAwesomeIcons.tv),
-    'Servicos': const FaIcon(FontAwesomeIcons.clipboard),
+    'Serviços': const FaIcon(FontAwesomeIcons.clipboard),
     'Tecnologia': const FaIcon(FontAwesomeIcons.laptop),
     'Outros': const FaIcon(FontAwesomeIcons.circleQuestion),
   };
