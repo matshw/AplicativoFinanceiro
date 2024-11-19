@@ -32,6 +32,7 @@ class _TransactionFormEconomiasState extends State<TransactionFormEconomias> {
   }
 
   Future<void> _addInvestment() async {
+    
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
